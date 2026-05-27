@@ -183,6 +183,30 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
 /* QUICK ACTION BUTTON in table */
 .btn-cotar{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--gold);padding:4px 10px;font-size:11px;border-radius:5px;cursor:pointer;font-weight:700;white-space:nowrap}
 .btn-cotar:hover{background:rgba(245,158,11,.2)}
+
+/* NOTIFICATION LOG */
+.notif-row{display:grid;grid-template-columns:90px 110px 1fr auto;gap:12px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border);font-size:12px}
+.notif-row:last-child{border-bottom:none}
+.notif-op{font-family:monospace;color:var(--accent-light);font-size:11px}
+.notif-type{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.nt-status{background:rgba(139,92,246,.15);color:var(--purple)}
+.nt-missing{background:rgba(245,158,11,.15);color:var(--gold)}
+.nt-new{background:rgba(59,130,246,.15);color:var(--accent-light)}
+.notif-sent{display:flex;gap:6px;font-size:11px;color:var(--muted)}
+.notif-sent span{padding:2px 6px;border-radius:4px}
+.ns-ok{background:rgba(16,185,129,.15);color:var(--green)}
+.ns-pend{background:rgba(148,163,184,.1);color:var(--muted)}
+
+/* DOC CHECKLIST */
+.doc-check-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.doc-check{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:500;transition:.15s}
+.doc-check:hover{border-color:var(--gold)}
+.doc-check input{accent-color:var(--gold);cursor:pointer}
+
+/* WA NOTIFY MODAL */
+.wa-preview{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow-y:auto;margin-bottom:12px;color:var(--text)}
+.btn-gold{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:var(--gold)}
+.btn-gold:hover{background:rgba(245,158,11,.25)}
 </style>
 </head>
 <body>
@@ -292,6 +316,18 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Histórico de notificações -->
+  <div class="card" id="notifications-card" style="margin-top:8px">
+    <div class="card-header">
+      <div class="card-title">Histórico de notificações</div>
+      <button class="btn btn-ghost btn-sm" onclick="loadNotifications()">↺ Atualizar</button>
+    </div>
+    <div id="notifications-body">
+      <div class="empty" style="padding:30px 20px"><div class="empty-text">Carregando...</div></div>
     </div>
   </div>
 </div>
@@ -408,6 +444,36 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       </div>
       <hr class="div"/>
       <button class="btn btn-purple btn-full btn-lg" onclick="createPartner()">Criar parceiro</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: NOTIFICAÇÃO WHATSAPP ═══════════════ -->
+<div class="modal-backdrop" id="modal-wa-notify">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="wa-notify-title">Notificação</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="wa-notify-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-wa-notify')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Mensagem WhatsApp</div>
+      <div class="wa-preview" id="wa-msg-preview"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <a id="wa-send-btn" class="btn btn-green" href="#" target="_blank" onclick="markWASent()">💬 Enviar pelo WhatsApp</a>
+        <button class="btn btn-ghost btn-sm" onclick="copiarWA()">📋 Copiar mensagem</button>
+      </div>
+      <hr class="div"/>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">E-mail (prévia)</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Assunto: <span id="wa-email-subject" style="color:var(--text);font-weight:600"></span></div>
+      <div class="wa-preview" id="wa-email-preview" style="font-size:12px;color:var(--muted)"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <a id="wa-mailto-btn" class="btn btn-ghost btn-sm" href="#">📧 Abrir no e-mail</a>
+        <button class="btn btn-ghost btn-sm" onclick="copiarEmail()">📋 Copiar texto</button>
+        <div id="wa-email-provider-note" style="font-size:11px;color:var(--muted);align-self:center;margin-left:4px">Envio automático disponível ao configurar Resend/SendGrid</div>
+      </div>
     </div>
   </div>
 </div>
@@ -533,6 +599,7 @@ async function loadTraderDashboard(){
   allOps = ops || [];
   renderTraderStats(allOps);
   filterOps();
+  await loadNotifications();
 }
 
 function renderTraderStats(ops){
@@ -717,6 +784,22 @@ function buildTraderOpHTML(op, jumpToQuote){
       <div class="info-cell"><div class="info-label">Endereço</div><div class="info-value sm">${op.end_remetente||'—'}</div></div>
       <div class="info-cell"><div class="info-label">Documentos recebidos</div><div class="info-value sm">${op.docs_remetente||'—'}</div></div>
     </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gold);margin-bottom:10px">📋 Solicitar informações ao parceiro</div>
+      <div class="doc-check-grid" id="kyc-checklist">
+        <label class="doc-check"><input type="checkbox" value="Documento de identidade com foto (frente e verso)"> Documento de identidade</label>
+        <label class="doc-check"><input type="checkbox" value="Comprovante de endereço (últimos 3 meses)"> Comprovante de endereço</label>
+        <label class="doc-check"><input type="checkbox" value="Declaração de origem dos fundos"> Origem dos fundos</label>
+        <label class="doc-check"><input type="checkbox" value="Selfie com documento"> Selfie com documento</label>
+        <label class="doc-check"><input type="checkbox" value="Número de CPF/RG do remetente"> CPF / RG</label>
+        <label class="doc-check"><input type="checkbox" value="Atualização cadastral do remetente"> Atualização cadastral</label>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Observação adicional (opcional)</label>
+        <input type="text" id="kyc-obs" placeholder="Ex: Documento ilegível, enviar novamente."/>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="sendMissingInfo('kyc-checklist','kyc-obs','${op.id}')">📤 Notificar parceiro</button>
+    </div>
   </div>
 
   <!-- Tab: Beneficiário -->
@@ -733,6 +816,23 @@ function buildTraderOpHTML(op, jumpToQuote){
     <div class="info-grid c1">
       <div class="info-cell"><div class="info-label">Endereço</div><div class="info-value sm">${op.end_beneficiario||'—'}</div></div>
       <div class="info-cell"><div class="info-label">Documentos KYB</div><div class="info-value sm">${op.kyb_docs||'—'}</div></div>
+    </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gold);margin-bottom:10px">📋 Solicitar informações ao parceiro</div>
+      <div class="doc-check-grid" id="kyb-checklist">
+        <label class="doc-check"><input type="checkbox" value="Articles of Incorporation / Contrato Social"> Articles of Inc / Contrato Social</label>
+        <label class="doc-check"><input type="checkbox" value="Documento de identidade dos sócios/diretores"> Documento dos sócios</label>
+        <label class="doc-check"><input type="checkbox" value="Comprovante de endereço da empresa"> Comprovante de endereço</label>
+        <label class="doc-check"><input type="checkbox" value="Número de registro empresarial (EIN/CNPJ)"> EIN / CNPJ</label>
+        <label class="doc-check"><input type="checkbox" value="Estrutura societária (UBO)"> Estrutura societária (UBO)</label>
+        <label class="doc-check"><input type="checkbox" value="Licença de operação / Alvará"> Licença / Alvará</label>
+        <label class="doc-check"><input type="checkbox" value="Declaração de propósito da transação"> Declaração de propósito</label>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Observação adicional (opcional)</label>
+        <input type="text" id="kyb-obs" placeholder="Ex: Precisamos do UBO completo com CPF dos sócios."/>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="sendMissingInfo('kyb-checklist','kyb-obs','${op.id}')">📤 Notificar parceiro</button>
     </div>
   </div>
 
@@ -899,9 +999,11 @@ async function updateStatus(opId, newStatus){
   const { error } = await sb.from('operations').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', opId);
   if(error){ toast('Erro: '+error.message,'err'); return; }
   toast(`Status → ${newStatus}`);
+  const opSnap = currentOp;
   currentOp.status = newStatus;
   if(currentProfile?.role==='trader') await loadTraderDashboard();
   closeModal('modal-op');
+  await notifyStatusChange(opSnap, newStatus);
 }
 
 async function submitTraderQuote(opId){
@@ -922,8 +1024,10 @@ async function submitTraderQuote(opId){
   }).eq('id', opId);
   if(error){ toast('Erro: '+error.message,'err'); return; }
   toast('Cotação base salva!');
+  const opSnap = {...currentOp, taxa_base: parseFloat(taxa), sla, validade: new Date(validade).toISOString()};
   closeModal('modal-op');
   await loadTraderDashboard();
+  await notifyStatusChange(opSnap, 'Cotação enviada ao parceiro');
 }
 
 function gerarLinkCliente(opId){
@@ -1014,6 +1118,14 @@ async function submitNewOp(){
   toast(`Operação ${opId} criada!`);
   closeModal('modal-new-op');
   await loadPartnerDashboard();
+  // Notifica trader sobre nova demanda
+  const newOpData = {
+    op_id: opId, id: null, partner_id: currentUser.id,
+    valor: parseFloat(valor), moeda_origem: document.getElementById('n-moeda-origem').value,
+    moeda_destino: document.getElementById('n-moeda-destino').value,
+    remetente, beneficiario, sla_desejado: document.getElementById('n-sla-desejado').value
+  };
+  await notifyNewOperation(newOpData);
 }
 
 // ══════════════════════════════════════════
@@ -1035,6 +1147,158 @@ async function createPartner(){
   if(error){ toast('Erro: '+error.message,'err'); return; }
   toast(`Parceiro ${name} criado!`);
   closeModal('modal-create-partner');
+}
+
+// ══════════════════════════════════════════
+// NOTIFICAÇÕES
+// ══════════════════════════════════════════
+let currentWAMessage = '';
+let currentEmailText = '';
+let currentWANotifId = null;
+
+async function getPartnerProfile(partnerId){
+  const { data } = await sb.from('profiles').select('name,email,whatsapp,company').eq('id', partnerId).single();
+  return data || {};
+}
+
+async function logNotification(opId, operationId, type, recipient, recipientName, recipientEmail, recipientWhatsapp, subject, message){
+  await sb.from('notifications').insert({
+    op_id: opId, operation_id: operationId, type,
+    recipient, recipient_name: recipientName,
+    recipient_email: recipientEmail, recipient_whatsapp: recipientWhatsapp,
+    subject, message
+  }).select('id').single().then(r => { currentWANotifId = r.data?.id; });
+}
+
+function buildStatusMessage(op, newStatus, partnerName){
+  const n = partnerName ? `, ${partnerName}` : '';
+  const base = `*Mesa OTC — Mutual Pay*`;
+  const msgs = {
+    'Em validação KYB/KYC':
+      `🔍 *[${op.op_id}] Em validação KYB/KYC*\n\nOlá${n}!\n\nSua operação está em análise de documentos pela nossa mesa OTC.\nAguardaremos o contato para dar continuidade.\n\n${base}`,
+    'Cotação enviada ao parceiro':
+      `💱 *[${op.op_id}] Cotação disponível*\n\nOlá${n}!\n\nA cotação base da sua operação está pronta.\nAcesse o sistema, aplique seu fee e envie o link ao cliente.\n\n🔗 ${window.location.origin}/app.html\n\n${base}`,
+    'Aguardando aceite do cliente':
+      `⏳ *[${op.op_id}] Aguardando aceite do cliente*\n\nLink de cotação enviado. Avisaremos quando o cliente responder.\n\n${base}`,
+    'Em execução':
+      `⚡ *[${op.op_id}] Em execução*\n\nOlá${n}!\n\nO cliente aceitou a cotação. A operação está sendo processada pela mesa OTC.\n\n${base}`,
+    'Concluída':
+      `✅ *[${op.op_id}] Concluída com sucesso!*\n\nOlá${n}!\n\nSua operação foi concluída. Obrigado pela confiança!\n\n${base}`,
+    'Bloqueada/recusada':
+      `⛔ *[${op.op_id}] Operação bloqueada*\n\nOlá${n}!\n\nSua operação foi bloqueada pela mesa OTC.\nEntre em contato para mais informações.\n\n${base}`,
+  };
+  return msgs[newStatus] || null;
+}
+
+async function notifyStatusChange(op, newStatus){
+  const partner = await getPartnerProfile(op.partner_id);
+  const message = buildStatusMessage(op, newStatus, partner.name);
+  if(!message) return;
+  const subject = `[${op.op_id}] ${newStatus}`;
+  await logNotification(op.op_id, op.id, 'status_change', 'partner',
+    partner.name, partner.email, partner.whatsapp, subject, message);
+  openWANotify(partner.whatsapp, message, subject, partner.email, partner.name);
+}
+
+async function notifyNewOperation(op){
+  // Notifica traders sobre nova demanda
+  const { data: traders } = await sb.from('profiles').select('name,email,whatsapp').eq('role','trader');
+  if(!traders?.length) return;
+  const t = traders[0];
+  const base = `*Mutual Pay — Sistema OTC*`;
+  const message = `🆕 *Nova demanda: ${op.op_id}*\n\nParceiro: ${partnerNames[op.partner_id]||'—'}\nOperação: ${fv(op.valor)} ${op.moeda_origem} → ${op.moeda_destino}\nRemetente: ${op.remetente||'—'}\nBeneficiário: ${op.beneficiario||'—'}\nSLA desejado: ${op.sla_desejado||'—'}\n\nAcesse o sistema para cotar:\n🔗 ${window.location.origin}/app.html\n\n${base}`;
+  const subject = `Nova demanda OTC: ${op.op_id}`;
+  await logNotification(op.op_id, op.id, 'new_operation', 'trader',
+    t.name, t.email, t.whatsapp, subject, message);
+  openWANotify(t.whatsapp, message, subject, t.email, t.name);
+}
+
+async function sendMissingInfo(checklistId, obsId, operationId){
+  const checked = [...document.querySelectorAll(`#${checklistId} input:checked`)].map(el => el.value);
+  const obs = document.getElementById(obsId)?.value.trim();
+  if(!checked.length){ toast('Selecione ao menos um item.','warn'); return; }
+
+  const op = currentOp;
+  const partner = await getPartnerProfile(op.partner_id);
+  const list = checked.map(c => `❌ ${c}`).join('\n');
+  const obsLine = obs ? `\n\n📝 Observação: ${obs}` : '';
+  const message = `📋 *[${op.op_id}] Documentação pendente*\n\nOlá${partner.name ? ', '+partner.name : ''}!\n\nA mesa OTC identificou as seguintes pendências na sua operação:\n\n${list}${obsLine}\n\nEnvie os documentos/informações o quanto antes para darmos continuidade.\n\n*Mesa OTC — Mutual Pay*`;
+  const subject = `[${op.op_id}] Documentação pendente`;
+
+  await sb.from('operations').update({ status: 'Em validação KYB/KYC', updated_at: new Date().toISOString() }).eq('id', op.id);
+  await logNotification(op.op_id, op.id, 'missing_info', 'partner',
+    partner.name, partner.email, partner.whatsapp, subject, message);
+  openWANotify(partner.whatsapp, message, subject, partner.email, partner.name);
+  toast('Notificação registrada — status atualizado para Em validação');
+}
+
+function openWANotify(whatsapp, message, subject, email, recipientName){
+  currentWAMessage = message;
+  currentEmailText = message;
+  const waNum = (whatsapp||'').replace(/\D/g,'');
+  const waUrl = waNum
+    ? `https://wa.me/${waNum}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  document.getElementById('wa-notify-title').textContent = subject || 'Notificação';
+  document.getElementById('wa-notify-sub').textContent = recipientName
+    ? `Para: ${recipientName}${whatsapp ? ' · ' + whatsapp : ''}${email ? ' · ' + email : ''}`
+    : '';
+  document.getElementById('wa-msg-preview').textContent = message;
+  document.getElementById('wa-send-btn').href = waUrl;
+  document.getElementById('wa-email-subject').textContent = subject || '';
+  document.getElementById('wa-email-preview').textContent = message;
+  const mailto = email
+    ? `mailto:${email}?subject=${encodeURIComponent(subject||'')}&body=${encodeURIComponent(message)}`
+    : `mailto:?subject=${encodeURIComponent(subject||'')}&body=${encodeURIComponent(message)}`;
+  document.getElementById('wa-mailto-btn').href = mailto;
+  openModal('modal-wa-notify');
+}
+
+async function markWASent(){
+  if(currentWANotifId){
+    await sb.from('notifications').update({ sent_whatsapp: true }).eq('id', currentWANotifId);
+    toast('WhatsApp marcado como enviado');
+  }
+}
+
+function copiarWA(){
+  navigator.clipboard.writeText(currentWAMessage).then(()=>toast('Mensagem copiada!'));
+}
+function copiarEmail(){
+  navigator.clipboard.writeText(currentEmailText).then(()=>toast('Texto copiado!'));
+}
+
+async function loadNotifications(){
+  const { data, error } = await sb.from('notifications')
+    .select('*').order('created_at',{ascending:false}).limit(30);
+  if(error){ return; }
+  renderNotifications(data||[]);
+}
+
+function renderNotifications(notifs){
+  const el = document.getElementById('notifications-body');
+  if(!notifs.length){
+    el.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-text">Nenhuma notificação ainda</div></div>`;
+    return;
+  }
+  const typeLabel = { status_change:'Status', missing_info:'Pendência', new_operation:'Nova op.', client_response:'Cliente' };
+  const typeClass = { status_change:'nt-status', missing_info:'nt-missing', new_operation:'nt-new', client_response:'nt-new' };
+  el.innerHTML = notifs.map(n => `
+    <div class="notif-row">
+      <div>
+        <div class="notif-op">${n.op_id||'—'}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${fd(n.created_at)}</div>
+      </div>
+      <div><span class="notif-type ${typeClass[n.type]||'nt-status'}">${typeLabel[n.type]||n.type}</span>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">${n.recipient_name||n.recipient}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.4">${(n.subject||'').slice(0,80)}</div>
+      <div class="notif-sent">
+        <span class="${n.sent_whatsapp?'ns-ok':'ns-pend'}">${n.sent_whatsapp?'💬 WA':'💬 —'}</span>
+        <span class="${n.sent_email?'ns-ok':'ns-pend'}">${n.sent_email?'📧 E-mail':'📧 —'}</span>
+      </div>
+    </div>`).join('');
 }
 
 // ══════════════════════════════════════════
