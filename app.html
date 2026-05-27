@@ -394,7 +394,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
         <div class="field"><label>Invoice / referência documental</label><textarea id="n-invoice" placeholder="Ex: Invoice INV-2024-089 — USD 18.500"></textarea></div>
       </div>
 
-      <div class="section-label">Remetente</div>
+      <div class="section-label">Remetente (KYC)</div>
       <div class="form-grid">
         <div class="field"><label>Nome completo *</label><input type="text" id="n-remetente" placeholder="Nome / Razão social"/></div>
         <div class="field"><label>País</label><input type="text" id="n-pais-remetente" placeholder="Brasil"/></div>
@@ -402,12 +402,20 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
         <div class="field"><label>Número do documento *</label><input type="text" id="n-num-doc" placeholder="000.000.000-00"/></div>
         <div class="field"><label>Status KYC</label><select id="n-status-kyc"><option value="">—</option><option>Aprovado</option><option>Em validação</option><option>Pendente</option><option>Pendência documental</option></select></div>
       </div>
-      <div class="form-grid c1" style="margin-top:12px">
-        <div class="field"><label>Endereço *</label><textarea id="n-end-remetente" placeholder="Rua, número, cidade, estado, país, CEP"></textarea></div>
-        <div class="field"><label>Documentos recebidos (checklist)</label><textarea id="n-docs-remetente" placeholder="Documento com foto ✓, Comprovante de endereço ✓, Invoice ✓"></textarea></div>
+      <div class="form-grid c1" style="margin-top:10px">
+        <div class="field"><label>Endereço completo *</label><textarea id="n-end-remetente" placeholder="Rua, número, complemento, cidade, estado, país, CEP"></textarea></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Documentos do remetente disponíveis</label></div>
+      <div class="doc-check-grid" style="margin-top:6px">
+        <label class="doc-check"><input type="checkbox" class="ndoc-rem" value="Documento de identidade com foto"> Documento de identidade</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-rem" value="Comprovante de endereço"> Comprovante de endereço</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-rem" value="Declaração de origem dos fundos"> Origem dos fundos</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-rem" value="Selfie com documento"> Selfie com documento</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-rem" value="Invoice / fatura"> Invoice / fatura</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-rem" value="Contrato / acordo"> Contrato / acordo</label>
       </div>
 
-      <div class="section-label">Beneficiário</div>
+      <div class="section-label">Beneficiário (KYB)</div>
       <div class="form-grid">
         <div class="field"><label>Nome legal *</label><input type="text" id="n-beneficiario" placeholder="Empresa XYZ Inc"/></div>
         <div class="field"><label>Ramo de atividade *</label><input type="text" id="n-ramo" placeholder="Tecnologia, Importação..."/></div>
@@ -415,9 +423,17 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
         <div class="field"><label>Documento de registro *</label><input type="text" id="n-doc-registro" placeholder="EIN, Company Nr, CNPJ..."/></div>
         <div class="field"><label>Status KYB</label><select id="n-status-kyb"><option value="">—</option><option>Aprovado</option><option>Em validação</option><option>Pendente</option><option>Pendência documental</option></select></div>
       </div>
-      <div class="form-grid c1" style="margin-top:12px">
-        <div class="field"><label>Endereço *</label><textarea id="n-end-beneficiario" placeholder="Rua, número, cidade, estado, país, ZIP"></textarea></div>
-        <div class="field"><label>Documentos KYB (checklist)</label><textarea id="n-kyb-docs" placeholder="Articles of Inc ✓, ID dos sócios ✓"></textarea></div>
+      <div class="form-grid c1" style="margin-top:10px">
+        <div class="field"><label>Endereço completo *</label><textarea id="n-end-beneficiario" placeholder="Rua, número, complemento, cidade, estado, país, ZIP"></textarea></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Documentos do beneficiário disponíveis</label></div>
+      <div class="doc-check-grid" style="margin-top:6px">
+        <label class="doc-check"><input type="checkbox" class="ndoc-kyb" value="Articles of Incorporation / Contrato Social"> Articles of Inc / Contrato Social</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-kyb" value="Documento dos sócios / diretores"> Documento dos sócios</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-kyb" value="Comprovante de endereço empresarial"> Comprovante de endereço</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-kyb" value="Estrutura societária (UBO)"> Estrutura societária (UBO)</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-kyb" value="Licença de operação / Alvará"> Licença / Alvará</label>
+        <label class="doc-check"><input type="checkbox" class="ndoc-kyb" value="Declaração de propósito da transação"> Declaração de propósito</label>
       </div>
 
       <hr class="div"/>
@@ -715,7 +731,7 @@ async function openOpDetail(id, jumpToQuote){
     setTimeout(()=>showModalTab('mt-cotacao'), 50);
   }
   if(!isTrader && op.taxa_base){
-    setTimeout(()=>calcFeeModal(op.id), 100);
+    setTimeout(()=>{ showModalTab('pt-cot'); calcFeeModal(op.id); }, 100);
   }
   if(isTrader && !op.taxa_base){
     setTimeout(()=>{
@@ -896,25 +912,121 @@ function buildTraderOpHTML(op, jumpToQuote){
   return html;
 }
 
-// ── PARCEIRO: modal simples ──────────────────────
+// ── PARCEIRO: modal com abas editáveis ──────────────────────
 function buildPartnerOpHTML(op){
-  let html = `
-  <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-    ${statusDot(op.status)}
-  </div>
+  // detecta documentos marcados para pré-checar
+  const remDocs = op.docs_remetente||'';
+  const kybDocs = op.kyb_docs||'';
+  const dc = (list, val) => list.includes(val) ? 'checked' : '';
 
-  <div class="section-label">Operação</div>
-  <div class="info-grid">
-    <div class="info-cell"><div class="info-label">Tipo</div><div class="info-value">${op.tipo||'—'}</div></div>
-    <div class="info-cell"><div class="info-label">Valor</div><div class="info-value">${fv(op.valor)} ${op.moeda_origem||''} → ${op.moeda_destino||''}</div></div>
-    <div class="info-cell"><div class="info-label">País destino</div><div class="info-value">${op.pais_destino||'—'}</div></div>
-    <div class="info-cell"><div class="info-label">SLA desejado</div><div class="info-value">${op.sla_desejado||'—'}</div></div>
+  const hasCotacao = !!op.taxa_base;
+
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+    ${statusDot(op.status)}
+    <span style="font-size:11px;color:var(--muted)">${fdh(op.created_at)}</span>
   </div>`;
 
-  if(op.taxa_base){
+  // Alerta de pendência documental
+  if(op.status_kyc==='Pendência documental'||op.status_kyb==='Pendência documental'){
+    html += `<div class="alert alert-gold" style="margin-bottom:14px">📋 A mesa OTC identificou pendências de documentação. Verifique as abas Remetente / Beneficiário e complete as informações.</div>`;
+  }
+
+  html += `
+  <div class="modal-tabs">
+    <div class="modal-tab active" onclick="showModalTab('pt-op')">Operação</div>
+    <div class="modal-tab" onclick="showModalTab('pt-rem')">Remetente / KYC</div>
+    <div class="modal-tab" onclick="showModalTab('pt-ben')">Beneficiário / KYB</div>
+    ${hasCotacao ? `<div class="modal-tab" onclick="showModalTab('pt-cot')">💱 Cotação</div>` : ''}
+  </div>
+
+  <!-- Tab: Operação -->
+  <div class="tab-panel active" id="pt-op">
+    <div class="info-grid">
+      <div class="info-cell"><div class="info-label">Tipo</div><div class="info-value">${op.tipo||'—'}</div></div>
+      <div class="info-cell"><div class="info-label">Valor</div><div class="info-value" style="font-size:15px;color:var(--gold)">${fv(op.valor)} ${op.moeda_origem||''} → ${op.moeda_destino||''}</div></div>
+      <div class="info-cell"><div class="info-label">País destino</div><div class="info-value">${op.pais_destino||'—'}</div></div>
+      <div class="info-cell"><div class="info-label">SLA desejado</div><div class="info-value">${op.sla_desejado||'—'}</div></div>
+    </div>
+    <div class="info-grid c1">
+      <div class="info-cell"><div class="info-label">Propósito / Bens e serviços</div><div class="info-value sm">${op.proposito||'—'}</div></div>
+      <div class="info-cell"><div class="info-label">Invoice / Referência</div><div class="info-value sm">${op.invoice||'—'}</div></div>
+    </div>
+    ${!hasCotacao ? `<div class="alert alert-gold" style="margin-top:12px">⏳ Aguardando cotação da mesa OTC.</div>` : ''}
+    ${op.cliente_aceite!==null&&op.cliente_aceite!==undefined ? `
+    <div class="alert ${op.cliente_aceite?'alert-green':'alert-red'}" style="margin-top:12px">
+      ${op.cliente_aceite?'✅ Cliente aceitou':'❌ Cliente recusou'} — ${fdh(op.cliente_aceite_at)}
+    </div>` : ''}
+  </div>
+
+  <!-- Tab: Remetente (editável) -->
+  <div class="tab-panel" id="pt-rem">
+    <div class="form-grid" style="margin-bottom:10px">
+      <div class="field"><label>Nome completo</label><input type="text" id="pr-remetente" value="${op.remetente||''}"/></div>
+      <div class="field"><label>País</label><input type="text" id="pr-pais-remetente" value="${op.pais_remetente||''}"/></div>
+      <div class="field"><label>Tipo de documento</label>
+        <select id="pr-tipo-doc">
+          <option value="">—</option>
+          ${['CPF','RG','Passaporte','CNPJ','Tax ID','Outro'].map(v=>`<option ${op.tipo_doc===v?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Número do documento</label><input type="text" id="pr-num-doc" value="${op.num_doc||''}"/></div>
+      <div class="field"><label>Status KYC</label>
+        <select id="pr-status-kyc">
+          <option value="">—</option>
+          ${['Aprovado','Em validação','Pendente','Pendência documental'].map(v=>`<option ${op.status_kyc===v?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>Endereço completo</label><textarea id="pr-end-remetente" style="min-height:60px">${op.end_remetente||''}</textarea></div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Documentos disponíveis</div>
+    <div class="doc-check-grid" id="pr-docs-rem">
+      <label class="doc-check"><input type="checkbox" class="prem-doc" value="Documento de identidade com foto" ${dc(remDocs,'Documento de identidade')}> Documento de identidade</label>
+      <label class="doc-check"><input type="checkbox" class="prem-doc" value="Comprovante de endereço" ${dc(remDocs,'Comprovante de endereço')}> Comprovante de endereço</label>
+      <label class="doc-check"><input type="checkbox" class="prem-doc" value="Declaração de origem dos fundos" ${dc(remDocs,'Declaração de origem')}> Origem dos fundos</label>
+      <label class="doc-check"><input type="checkbox" class="prem-doc" value="Selfie com documento" ${dc(remDocs,'Selfie')}> Selfie com documento</label>
+      <label class="doc-check"><input type="checkbox" class="prem-doc" value="Invoice / fatura" ${dc(remDocs,'Invoice')}> Invoice / fatura</label>
+      <label class="doc-check"><input type="checkbox" class="prem-doc" value="Contrato / acordo" ${dc(remDocs,'Contrato')}> Contrato / acordo</label>
+    </div>
+    <hr class="div"/>
+    <button class="btn btn-primary btn-sm" onclick="savePartnerSection('${op.id}','rem')">💾 Salvar dados do remetente</button>
+  </div>
+
+  <!-- Tab: Beneficiário (editável) -->
+  <div class="tab-panel" id="pt-ben">
+    <div class="form-grid" style="margin-bottom:10px">
+      <div class="field"><label>Nome legal</label><input type="text" id="pb-beneficiario" value="${op.beneficiario||''}"/></div>
+      <div class="field"><label>Ramo de atividade</label><input type="text" id="pb-ramo" value="${op.ramo||''}"/></div>
+      <div class="field"><label>Website</label><input type="url" id="pb-website" value="${op.website||''}"/></div>
+      <div class="field"><label>Documento de registro</label><input type="text" id="pb-doc-registro" value="${op.doc_registro||''}"/></div>
+      <div class="field"><label>Status KYB</label>
+        <select id="pb-status-kyb">
+          <option value="">—</option>
+          ${['Aprovado','Em validação','Pendente','Pendência documental'].map(v=>`<option ${op.status_kyb===v?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>Endereço completo</label><textarea id="pb-end-beneficiario" style="min-height:60px">${op.end_beneficiario||''}</textarea></div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Documentos disponíveis</div>
+    <div class="doc-check-grid" id="pb-docs-kyb">
+      <label class="doc-check"><input type="checkbox" class="pkyb-doc" value="Articles of Incorporation / Contrato Social" ${dc(kybDocs,'Articles')||dc(kybDocs,'Contrato Social')}> Articles of Inc / Contrato Social</label>
+      <label class="doc-check"><input type="checkbox" class="pkyb-doc" value="Documento dos sócios / diretores" ${dc(kybDocs,'sócios')||dc(kybDocs,'diretores')}> Documento dos sócios</label>
+      <label class="doc-check"><input type="checkbox" class="pkyb-doc" value="Comprovante de endereço empresarial" ${dc(kybDocs,'endereço empresarial')}> Comprovante de endereço</label>
+      <label class="doc-check"><input type="checkbox" class="pkyb-doc" value="Estrutura societária (UBO)" ${dc(kybDocs,'UBO')}> Estrutura societária (UBO)</label>
+      <label class="doc-check"><input type="checkbox" class="pkyb-doc" value="Licença de operação / Alvará" ${dc(kybDocs,'Licença')||dc(kybDocs,'Alvará')}> Licença / Alvará</label>
+      <label class="doc-check"><input type="checkbox" class="pkyb-doc" value="Declaração de propósito da transação" ${dc(kybDocs,'propósito')}> Declaração de propósito</label>
+    </div>
+    <hr class="div"/>
+    <button class="btn btn-primary btn-sm" onclick="savePartnerSection('${op.id}','ben')">💾 Salvar dados do beneficiário</button>
+  </div>`;
+
+  // Tab: Cotação
+  if(hasCotacao){
     html += `
-    <div class="section-label">Aplicar seu fee e gerar link para o cliente</div>
-    <div class="alert alert-blue">ℹ️ O cliente não verá a taxa base do trader — apenas o valor final após seu fee.</div>
+  <div class="tab-panel" id="pt-cot">
+    <div class="alert alert-blue" style="margin-bottom:14px">ℹ️ O cliente não verá a taxa base — apenas o valor final após seu fee.</div>
     <div class="fee-box">
       <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:12px;text-transform:uppercase;letter-spacing:.8px">Calculadora de fee</div>
       <div class="form-grid c3">
@@ -939,30 +1051,53 @@ function buildPartnerOpHTML(op){
         <button class="btn btn-ghost btn-sm" onclick="copiar('cli-link-text-${op.id}')">📋 Copiar</button>
         <a id="cli-wa-${op.id}" class="btn btn-green btn-sm" href="#" target="_blank">💬 WhatsApp</a>
       </div>
-    </div>`;
-  } else {
-    html += `<div class="alert alert-gold" style="margin-top:12px">⏳ Aguardando cotação da mesa OTC.</div>`;
-  }
-
-  if(op.taxa_final){
-    html += `
-    <div class="section-label">Cotação enviada ao cliente</div>
-    <div class="info-grid">
-      <div class="info-cell"><div class="info-label">Taxa final</div><div class="info-value">1 ${op.moeda_origem} = ${op.taxa_final} ${op.moeda_destino}</div></div>
-      <div class="info-cell"><div class="info-label">Valor final</div><div class="info-value">${fv(op.valor_destino_final)} ${op.moeda_destino||''}</div></div>
-    </div>`;
-  }
-
-  if(op.cliente_aceite !== null && op.cliente_aceite !== undefined){
-    html += `
-    <div class="section-label">Resposta do cliente</div>
-    <div class="alert ${op.cliente_aceite ? 'alert-green' : 'alert-red'}">
-      ${op.cliente_aceite ? '✅ Cliente aceitou a cotação' : '❌ Cliente recusou / solicitou renegociação'}
-      — ${fdh(op.cliente_aceite_at)}
-    </div>`;
+    </div>
+    ${op.taxa_final ? `
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Cotação enviada ao cliente</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Taxa final</div><div class="info-value">1 ${op.moeda_origem} = ${op.taxa_final} ${op.moeda_destino}</div></div>
+        <div class="info-cell"><div class="info-label">Valor final</div><div class="info-value">${fv(op.valor_destino_final)} ${op.moeda_destino||''}</div></div>
+      </div>
+    </div>` : ''}
+    ${op.cliente_aceite!==null&&op.cliente_aceite!==undefined ? `
+    <div class="alert ${op.cliente_aceite?'alert-green':'alert-red'}" style="margin-top:12px">
+      ${op.cliente_aceite?'✅ Cliente aceitou':'❌ Cliente recusou'} — ${fdh(op.cliente_aceite_at)}
+    </div>` : ''}
+  </div>`;
   }
 
   return html;
+}
+
+async function savePartnerSection(opId, section){
+  let payload = { updated_at: new Date().toISOString() };
+  if(section==='rem'){
+    payload = { ...payload,
+      remetente:     document.getElementById('pr-remetente')?.value.trim(),
+      pais_remetente:document.getElementById('pr-pais-remetente')?.value.trim(),
+      tipo_doc:      document.getElementById('pr-tipo-doc')?.value,
+      num_doc:       document.getElementById('pr-num-doc')?.value.trim(),
+      status_kyc:    document.getElementById('pr-status-kyc')?.value,
+      end_remetente: document.getElementById('pr-end-remetente')?.value.trim(),
+      docs_remetente:[...document.querySelectorAll('.prem-doc:checked')].map(el=>el.value).join(' | ')
+    };
+  } else {
+    payload = { ...payload,
+      beneficiario:    document.getElementById('pb-beneficiario')?.value.trim(),
+      ramo:            document.getElementById('pb-ramo')?.value.trim(),
+      website:         document.getElementById('pb-website')?.value.trim(),
+      doc_registro:    document.getElementById('pb-doc-registro')?.value.trim(),
+      status_kyb:      document.getElementById('pb-status-kyb')?.value,
+      end_beneficiario:document.getElementById('pb-end-beneficiario')?.value.trim(),
+      kyb_docs:        [...document.querySelectorAll('.pkyb-doc:checked')].map(el=>el.value).join(' | ')
+    };
+  }
+  const { error } = await sb.from('operations').update(payload).eq('id', opId);
+  if(error){ toast('Erro ao salvar: '+error.message,'err'); return; }
+  toast('Dados salvos com sucesso!');
+  // atualiza currentOp localmente
+  Object.assign(currentOp, payload);
 }
 
 function showModalTab(tabId){
@@ -1075,9 +1210,10 @@ function gerarLinkCliente(opId){
 function openNewOp(){
   ['n-tipo','n-moeda-origem','n-valor','n-moeda-destino','n-pais-destino','n-sla-desejado',
    'n-proposito','n-invoice','n-remetente','n-pais-remetente','n-tipo-doc','n-num-doc',
-   'n-status-kyc','n-end-remetente','n-docs-remetente','n-beneficiario','n-ramo',
-   'n-website','n-doc-registro','n-status-kyb','n-end-beneficiario','n-kyb-docs']
+   'n-status-kyc','n-end-remetente','n-beneficiario','n-ramo',
+   'n-website','n-doc-registro','n-status-kyb','n-end-beneficiario']
   .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.querySelectorAll('.ndoc-rem,.ndoc-kyb').forEach(el=>el.checked=false);
   openModal('modal-new-op');
 }
 
@@ -1106,13 +1242,13 @@ async function submitNewOp(){
     num_doc: document.getElementById('n-num-doc').value.trim(),
     status_kyc: document.getElementById('n-status-kyc').value,
     end_remetente: document.getElementById('n-end-remetente').value.trim(),
-    docs_remetente: document.getElementById('n-docs-remetente').value.trim(),
+    docs_remetente: [...document.querySelectorAll('.ndoc-rem:checked')].map(el=>el.value).join(' | '),
     beneficiario, ramo: document.getElementById('n-ramo').value.trim(),
     website: document.getElementById('n-website').value.trim(),
     doc_registro: document.getElementById('n-doc-registro').value.trim(),
     status_kyb: document.getElementById('n-status-kyb').value,
     end_beneficiario: document.getElementById('n-end-beneficiario').value.trim(),
-    kyb_docs: document.getElementById('n-kyb-docs').value.trim(),
+    kyb_docs: [...document.querySelectorAll('.ndoc-kyb:checked')].map(el=>el.value).join(' | '),
   });
   if(error){ toast('Erro ao criar operação: '+error.message,'err'); return; }
   toast(`Operação ${opId} criada!`);
