@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mutual Pay — OTC Desk</title>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: #1e2d47;
+      --accent: #2563eb;
+      --accent-light: #3b82f6;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --purple: #8b5cf6;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* HEADER */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .logo { font-size: 18px; font-weight: 700; color: var(--text); }
+    .logo span { color: var(--accent-light); }
+    .badge { background: var(--accent); color: #fff; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .step-badge { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .step-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* CONTAINER */
+    .container { max-width: 760px; margin: 0 auto; padding: 36px 20px 80px; }
+
+    /* FLOW STEPS INDICATOR */
+    .flow-steps { display: flex; align-items: center; gap: 0; margin-bottom: 32px; }
+    .flow-step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+    .flow-step:not(:last-child)::after { content: ''; position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+    .flow-step.active:not(:last-child)::after { background: var(--accent); }
+    .step-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px solid var(--border); background: var(--bg); color: var(--muted); position: relative; z-index: 1; }
+    .flow-step.active .step-circle { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .flow-step.done .step-circle { border-color: var(--green); background: var(--green); color: #fff; }
+    .step-label { font-size: 10px; color: var(--muted); margin-top: 6px; text-align: center; white-space: nowrap; }
+    .flow-step.active .step-label { color: var(--accent-light); font-weight: 600; }
+
+    /* PAGE TITLE */
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+    /* CARD */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+    .card-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .card-body { padding: 20px; }
+
+    /* FORM */
+    .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent-light); margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .section-label:first-child { margin-top: 0; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-grid.cols-1 { grid-template-columns: 1fr; }
+    @media (max-width: 600px) { .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .field input, .field select, .field textarea {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; color: var(--text); font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent-light); }
+    .field select option { background: var(--surface2); }
+    .field textarea { resize: vertical; min-height: 68px; }
+    .field input[type=number]::-webkit-inner-spin-button { opacity: 0.5; }
+
+    /* STATUS PILLS */
+    .status-ok { color: var(--green); font-weight: 600; }
+    .status-warn { color: var(--gold); font-weight: 600; }
+    .status-bad { color: var(--red); font-weight: 600; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s; text-decoration: none; }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-purple { background: var(--purple); color: #fff; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-full { width: 100%; justify-content: center; }
+    .btn-lg { padding: 15px 24px; font-size: 15px; }
+
+    /* LINK BOX */
+    .link-box { display: none; margin-top: 20px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+    .link-box.visible { display: block; }
+    .link-label { font-size: 11px; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+    .link-text { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 11px; font-family: 'Courier New', monospace; color: var(--accent-light); word-break: break-all; margin-bottom: 12px; }
+    .link-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* READ-ONLY INFO BLOCKS */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+    .info-grid.cols-1 { grid-template-columns: 1fr; }
+    .info-cell { background: var(--surface2); padding: 12px 16px; }
+    .info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 3px; }
+    .info-value { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+    .info-value.muted { color: var(--muted); font-weight: 400; font-size: 12px; }
+    @media (max-width: 500px) { .info-grid { grid-template-columns: 1fr; } }
+
+    /* QUOTE HERO (client view) */
+    .quote-hero { background: linear-gradient(135deg, #0f172a 0%, #1e2d47 100%); border-bottom: 1px solid var(--border); padding: 28px 24px; text-align: center; }
+    .quote-company { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px; }
+    .quote-title { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .quote-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+    .expiry-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: var(--gold); padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .expiry-badge.expired { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: var(--red); }
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+    .quote-values { padding: 24px; display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--border); }
+    .value-block { text-align: center; }
+    .value-amount { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+    .value-currency { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+    .value-arrow { font-size: 26px; color: var(--accent-light); opacity: 0.6; }
+    .rate-row { background: rgba(37,99,235,0.08); border-top: 1px solid rgba(37,99,235,0.15); border-bottom: 1px solid rgba(37,99,235,0.15); padding: 10px 24px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: var(--accent-light); }
+    .rate-row strong { font-weight: 700; }
+    .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
+    .detail-cell { background: var(--surface); padding: 14px 20px; }
+    .detail-cell:last-child:nth-child(odd) { grid-column: 1/-1; }
+    .detail-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 3px; }
+    .detail-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .parties-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
+    .party-cell { background: var(--surface2); padding: 14px 20px; }
+    .obs-block { padding: 14px 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .quote-actions { padding: 20px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+    .actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .disclaimer { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; }
+    @media (max-width: 480px) { .actions-row,.details-grid,.parties-row { grid-template-columns: 1fr; } .value-amount { font-size: 24px; } }
+
+    /* FEE CALCULATOR */
+    .fee-calc { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); border-radius: 10px; padding: 18px; margin-top: 16px; }
+    .fee-calc-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gold); margin-bottom: 14px; }
+    .fee-result { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+    .fee-result-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+    .fee-result-row.total { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 12px; font-size: 15px; font-weight: 700; color: var(--green); }
+
+    /* CONFIRMATION */
+    #view-confirmation { display: none; text-align: center; padding: 60px 20px; }
+    .confirm-icon { font-size: 52px; margin-bottom: 14px; }
+    .confirm-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .confirm-sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+    .confirm-id { font-family: 'Courier New', monospace; font-size: 13px; color: var(--accent-light); background: rgba(37,99,235,0.1); padding: 8px 16px; border-radius: 8px; display: inline-block; margin-bottom: 24px; }
+
+    /* OP ID TAG */
+    .op-id { font-size: 12px; font-family: 'Courier New', monospace; color: var(--accent-light); background: rgba(37,99,235,0.12); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(37,99,235,0.25); }
+
+    /* ALERT */
+    .alert { border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 16px; }
+    .alert-gold { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); color: var(--gold); }
+    .alert-blue { background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.25); color: var(--accent-light); }
+
+    /* DIVIDER */
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* VIEWS hidden by default */
+    #view-intake, #view-trader, #view-pquote, #view-quote, #view-confirmation { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Mutual<span>Pay</span></div>
+  <div class="badge">OTC Desk</div>
+  <div class="step-badge" id="header-step"></div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 1 — PARCEIRO: formulário de intake do cliente
+     URL: index.html  (sem hash)
+════════════════════════════════════════════════════════ -->
+<div id="view-intake">
+<div class="container">
+
+  <div class="flow-steps">
+    <div class="flow-step active"><div class="step-circle">1</div><div class="step-label">Parceiro<br>envia dados</div></div>
+    <div class="flow-step"><div class="step-circle">2</div><div class="step-label">Trader<br>cotação base</div></div>
+    <div class="flow-step"><div class="step-circle">3</div><div class="step-label">Parceiro<br>aplica fee</div></div>
+    <div class="flow-step"><div class="step-circle">4</div><div class="step-label">Cliente<br>aceita</div></div>
+  </div>
+
+  <div class="page-title">Solicitação de cotação</div>
+  <p class="page-sub">Preencha os dados do cliente e da operação. Um link será gerado para enviar ao trader.</p>
+
+  <div class="card">
+    <div class="card-body">
+
+      <div class="section-label">Identificação do parceiro</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Nome do parceiro / empresa *</label>
+          <input type="text" id="i-parceiro" placeholder="Ex: Empresa Parceira Ltda" />
+        </div>
+        <div class="field">
+          <label>WhatsApp do parceiro (DDI+DDD+número) *</label>
+          <input type="text" id="i-whatsapp-parceiro" placeholder="5511999999999" />
+        </div>
+      </div>
+
+      <div class="section-label">Dados da operação</div>
+      <div class="form-grid cols-3">
+        <div class="field">
+          <label>Tipo de operação</label>
+          <select id="i-tipo">
+            <option>Câmbio Internacional</option>
+            <option>OTC FX Spot</option>
+            <option>OTC FX Forward</option>
+            <option>NDF</option>
+            <option>Stablecoin → BRL</option>
+            <option>BRL → Stablecoin</option>
+            <option>Remessa Internacional</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Moeda de origem *</label>
+          <select id="i-moeda-origem">
+            <option>BRL</option><option>USD</option><option>EUR</option>
+            <option>GBP</option><option>USDT</option><option>USDC</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Valor da operação *</label>
+          <input type="number" id="i-valor" placeholder="100000" step="0.01" />
+        </div>
+        <div class="field">
+          <label>Moeda de destino *</label>
+          <select id="i-moeda-destino">
+            <option>USD</option><option>BRL</option><option>EUR</option>
+            <option>GBP</option><option>USDT</option><option>USDC</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>País de destino *</label>
+          <input type="text" id="i-pais-destino" placeholder="USA" />
+        </div>
+        <div class="field">
+          <label>SLA desejado</label>
+          <select id="i-sla-desejado">
+            <option>Sem preferência</option>
+            <option>D+0 (mesmo dia)</option>
+            <option>D+1</option>
+            <option>D+2</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid cols-1">
+        <div class="field">
+          <label>Propósito da transação / bens ou serviços relacionados *</label>
+          <textarea id="i-proposito" placeholder="Descreva o motivo econômico e o que está sendo pago, comprado ou prestado." style="min-height:70px"></textarea>
+        </div>
+        <div class="field">
+          <label>Motivo do pagamento / Invoice de referência</label>
+          <textarea id="i-invoice" placeholder="Ex: Pagamento referente à invoice INV-2024-089, valor USD 18.500. Contrato de prestação de serviços nº 12/2024." style="min-height:60px"></textarea>
+        </div>
+      </div>
+
+      <div class="section-label">Dados do remetente</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Nome completo do remetente *</label>
+          <input type="text" id="i-remetente" placeholder="João Silva / Empresa X Ltda" />
+        </div>
+        <div class="field">
+          <label>País do remetente</label>
+          <input type="text" id="i-pais-remetente" placeholder="Brasil" />
+        </div>
+        <div class="field">
+          <label>Tipo de documento</label>
+          <select id="i-tipo-doc">
+            <option value="">— Selecionar —</option>
+            <option>CPF</option><option>RG</option><option>Passaporte</option>
+            <option>CNH</option><option>CNPJ</option><option>Tax ID</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Número do documento *</label>
+          <input type="text" id="i-num-doc" placeholder="000.000.000-00" />
+        </div>
+        <div class="field">
+          <label>Status KYC</label>
+          <select id="i-status-kyc">
+            <option value="">— Selecionar —</option>
+            <option>Aprovado</option><option>Em validação</option>
+            <option>Pendente</option><option>Pendência documental</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid cols-1">
+        <div class="field">
+          <label>Endereço completo do remetente *</label>
+          <textarea id="i-end-remetente" placeholder="Rua, número, cidade, estado, país, CEP" style="min-height:54px"></textarea>
+        </div>
+        <div class="field">
+          <label>Documentos do remetente recebidos (checklist)</label>
+          <textarea id="i-docs-remetente" placeholder="Ex: Documento de identificação com foto ✓, Comprovante de endereço ✓, Invoice ✓" style="min-height:54px"></textarea>
+        </div>
+      </div>
+
+      <div class="section-label">Dados do beneficiário</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Nome legal do beneficiário *</label>
+          <input type="text" id="i-beneficiario" placeholder="Acme Corp" />
+        </div>
+        <div class="field">
+          <label>Ramo de atividade *</label>
+          <input type="text" id="i-ramo" placeholder="Ex: Tecnologia, Importação, Serviços" />
+        </div>
+        <div class="field">
+          <label>Website oficial</label>
+          <input type="url" id="i-website" placeholder="https://empresa.com" />
+        </div>
+        <div class="field">
+          <label>Nº documento de registro *</label>
+          <input type="text" id="i-doc-registro" placeholder="EIN, Company Nr, CNPJ etc." />
+        </div>
+        <div class="field">
+          <label>Status KYB</label>
+          <select id="i-status-kyb">
+            <option value="">— Selecionar —</option>
+            <option>Aprovado</option><option>Em validação</option>
+            <option>Pendente</option><option>Pendência documental</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid cols-1">
+        <div class="field">
+          <label>Endereço completo da empresa *</label>
+          <textarea id="i-end-beneficiario" placeholder="Rua, número, cidade, estado, país, ZIP" style="min-height:54px"></textarea>
+        </div>
+        <div class="field">
+          <label>Documentos KYB recebidos (checklist)</label>
+          <textarea id="i-kyb-docs" placeholder="Ex: Artigos de incorporação ✓, Comprovante de endereço ✓, ID dos sócios ✓" style="min-height:54px"></textarea>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <button class="btn btn-primary btn-full btn-lg" onclick="gerarIntakeLink()">
+        📤 Enviar solicitação ao trader
+      </button>
+
+      <div class="link-box" id="intake-link-box">
+        <div class="link-label">✅ Link gerado — envie ao trader</div>
+        <div class="link-text" id="intake-link-text"></div>
+        <div class="link-actions">
+          <button class="btn btn-ghost" onclick="copiar('intake-link-text')">📋 Copiar link</button>
+          <a id="intake-wa-btn" class="btn btn-green" href="#" target="_blank">💬 Enviar pelo WhatsApp</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 2 — TRADER: revisa dados e define cotação base
+     URL: index.html#intake=BASE64
+════════════════════════════════════════════════════════ -->
+<div id="view-trader">
+<div class="container">
+
+  <div class="flow-steps">
+    <div class="flow-step done"><div class="step-circle">✓</div><div class="step-label">Parceiro<br>enviou dados</div></div>
+    <div class="flow-step active"><div class="step-circle">2</div><div class="step-label">Trader<br>cotação base</div></div>
+    <div class="flow-step"><div class="step-circle">3</div><div class="step-label">Parceiro<br>aplica fee</div></div>
+    <div class="flow-step"><div class="step-circle">4</div><div class="step-label">Cliente<br>aceita</div></div>
+  </div>
+
+  <div class="page-title">Revisar solicitação e cotar</div>
+  <p class="page-sub">Dados recebidos do parceiro. Valide e defina sua cotação base para retornar ao parceiro.</p>
+
+  <!-- Info cards -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Parceiro</div>
+      <span id="t-parceiro-badge" class="op-id"></span>
+    </div>
+    <div class="card-body" style="padding:14px 16px">
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Parceiro</div><div class="info-value" id="t-parceiro">—</div></div>
+        <div class="info-cell"><div class="info-label">WhatsApp</div><div class="info-value" id="t-wp-parceiro">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Operação solicitada</div></div>
+    <div class="card-body" style="padding:14px 16px">
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Tipo</div><div class="info-value" id="t-tipo">—</div></div>
+        <div class="info-cell"><div class="info-label">Valor</div><div class="info-value" id="t-valor">—</div></div>
+        <div class="info-cell"><div class="info-label">De</div><div class="info-value" id="t-moeda-origem">—</div></div>
+        <div class="info-cell"><div class="info-label">Para</div><div class="info-value" id="t-moeda-destino">—</div></div>
+        <div class="info-cell"><div class="info-label">País destino</div><div class="info-value" id="t-pais-destino">—</div></div>
+        <div class="info-cell"><div class="info-label">SLA desejado</div><div class="info-value" id="t-sla-desejado">—</div></div>
+      </div>
+      <div class="info-grid cols-1" style="margin-top:1px">
+        <div class="info-cell"><div class="info-label">Propósito / Bens e serviços</div><div class="info-value" id="t-proposito">—</div></div>
+        <div class="info-cell"><div class="info-label">Invoice / Referência documental</div><div class="info-value" id="t-invoice">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Remetente</div><span id="t-kyc-badge"></span></div>
+    <div class="card-body" style="padding:14px 16px">
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Nome</div><div class="info-value" id="t-remetente">—</div></div>
+        <div class="info-cell"><div class="info-label">País</div><div class="info-value" id="t-pais-remetente">—</div></div>
+        <div class="info-cell"><div class="info-label">Documento</div><div class="info-value" id="t-doc-remetente">—</div></div>
+        <div class="info-cell"><div class="info-label">Status KYC</div><div class="info-value" id="t-status-kyc">—</div></div>
+      </div>
+      <div class="info-grid cols-1" style="margin-top:1px">
+        <div class="info-cell"><div class="info-label">Endereço</div><div class="info-value" id="t-end-remetente">—</div></div>
+        <div class="info-cell"><div class="info-label">Documentos recebidos</div><div class="info-value muted" id="t-docs-remetente">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Beneficiário</div><span id="t-kyb-badge"></span></div>
+    <div class="card-body" style="padding:14px 16px">
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Nome legal</div><div class="info-value" id="t-beneficiario">—</div></div>
+        <div class="info-cell"><div class="info-label">Ramo</div><div class="info-value" id="t-ramo">—</div></div>
+        <div class="info-cell"><div class="info-label">Website</div><div class="info-value" id="t-website">—</div></div>
+        <div class="info-cell"><div class="info-label">Doc registro</div><div class="info-value" id="t-doc-registro">—</div></div>
+        <div class="info-cell"><div class="info-label">Status KYB</div><div class="info-value" id="t-status-kyb">—</div></div>
+      </div>
+      <div class="info-grid cols-1" style="margin-top:1px">
+        <div class="info-cell"><div class="info-label">Endereço</div><div class="info-value" id="t-end-beneficiario">—</div></div>
+        <div class="info-cell"><div class="info-label">Documentos KYB</div><div class="info-value muted" id="t-kyb-docs">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulário de cotação base -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">Sua cotação base — para o parceiro</div></div>
+    <div class="card-body">
+      <div class="alert alert-gold">⚠️ Esta cotação vai ao parceiro. Ele aplicará o fee dele antes de enviar ao cliente.</div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>ID da operação *</label>
+          <input type="text" id="t-id" placeholder="OTC-2026-0001" />
+        </div>
+        <div class="field">
+          <label>Taxa base ofertada *</label>
+          <input type="number" id="t-taxa" placeholder="5.4050" step="0.0001" />
+        </div>
+        <div class="field">
+          <label>Valor de saída estimado</label>
+          <input type="number" id="t-valor-destino" placeholder="18500" step="0.01" />
+        </div>
+        <div class="field">
+          <label>Tarifas / Fees da mesa</label>
+          <input type="text" id="t-tarifas" placeholder="USD 50,00" />
+        </div>
+        <div class="field">
+          <label>SLA / Prazo de liquidação *</label>
+          <select id="t-sla">
+            <option>D+0 (mesmo dia)</option>
+            <option>D+1 (próximo dia útil)</option>
+            <option selected>D+2 (dois dias úteis)</option>
+            <option>D+3 (três dias úteis)</option>
+            <option>A combinar</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Validade desta cotação *</label>
+          <input type="datetime-local" id="t-validade" />
+        </div>
+        <div class="field">
+          <label>Seu WhatsApp (DDI+DDD+número) *</label>
+          <input type="text" id="t-whatsapp" placeholder="5511999990000" />
+        </div>
+        <div class="field">
+          <label>Mesa / Trader</label>
+          <input type="text" id="t-trader" placeholder="Mesa OTC — Lucas" />
+        </div>
+      </div>
+      <div class="form-grid cols-1" style="margin-top:14px">
+        <div class="field">
+          <label>Observações internas / Condições para o parceiro</label>
+          <textarea id="t-obs" placeholder="Ex: Cotação válida para os dados enviados. Qualquer alteração de banco ou beneficiário exige nova validação." style="min-height:60px"></textarea>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <button class="btn btn-purple btn-full btn-lg" onclick="gerarPartnerQuoteLink()">
+        📨 Enviar cotação base ao parceiro
+      </button>
+
+      <div class="link-box" id="pq-link-box">
+        <div class="link-label">✅ Link gerado — envie ao parceiro</div>
+        <div class="link-text" id="pq-link-text"></div>
+        <div class="link-actions">
+          <button class="btn btn-ghost" onclick="copiar('pq-link-text')">📋 Copiar link</button>
+          <a id="pq-wa-btn" class="btn btn-green" href="#" target="_blank">💬 Enviar pelo WhatsApp</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 3 — PARCEIRO: vê cotação base, aplica seu fee
+     URL: index.html#pquote=BASE64
+════════════════════════════════════════════════════════ -->
+<div id="view-pquote">
+<div class="container">
+
+  <div class="flow-steps">
+    <div class="flow-step done"><div class="step-circle">✓</div><div class="step-label">Parceiro<br>enviou dados</div></div>
+    <div class="flow-step done"><div class="step-circle">✓</div><div class="step-label">Trader<br>cotação base</div></div>
+    <div class="flow-step active"><div class="step-circle">3</div><div class="step-label">Parceiro<br>aplica fee</div></div>
+    <div class="flow-step"><div class="step-circle">4</div><div class="step-label">Cliente<br>aceita</div></div>
+  </div>
+
+  <div class="page-title">Cotação do trader recebida</div>
+  <p class="page-sub">Confira a cotação base e aplique o seu fee para gerar o link final para o cliente.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Cotação base — Mutual Pay</div>
+      <span id="pq-id" class="op-id"></span>
+    </div>
+    <div class="card-body" style="padding:14px 16px">
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Operação</div><div class="info-value" id="pq-tipo">—</div></div>
+        <div class="info-cell"><div class="info-label">Remetente → Beneficiário</div><div class="info-value" id="pq-partes">—</div></div>
+        <div class="info-cell"><div class="info-label">Valor de entrada</div><div class="info-value" id="pq-valor-origem">—</div></div>
+        <div class="info-cell"><div class="info-label">Valor estimado de saída (base)</div><div class="info-value" id="pq-valor-destino-base">—</div></div>
+        <div class="info-cell"><div class="info-label">Taxa base</div><div class="info-value" id="pq-taxa-base">—</div></div>
+        <div class="info-cell"><div class="info-label">Tarifas da mesa</div><div class="info-value" id="pq-tarifas-base">—</div></div>
+        <div class="info-cell"><div class="info-label">SLA</div><div class="info-value" id="pq-sla">—</div></div>
+        <div class="info-cell"><div class="info-label">Validade da cotação</div><div class="info-value" id="pq-validade">—</div></div>
+      </div>
+      <div class="info-grid cols-1" style="margin-top:1px" id="pq-obs-block">
+        <div class="info-cell"><div class="info-label">Observações do trader</div><div class="info-value muted" id="pq-obs"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Aplicar seu fee e gerar cotação para o cliente</div></div>
+    <div class="card-body">
+
+      <div class="alert alert-blue">ℹ️ O cliente <strong>não verá</strong> a cotação base do trader, apenas o valor final após seu fee.</div>
+
+      <div class="fee-calc">
+        <div class="fee-calc-title">Calculadora de fee do parceiro</div>
+        <div class="form-grid cols-3">
+          <div class="field">
+            <label>Spread do parceiro (%)</label>
+            <input type="number" id="pq-spread" placeholder="0.50" step="0.01" min="0" oninput="calcFee()" />
+          </div>
+          <div class="field">
+            <label>Tarifa fixa adicional</label>
+            <input type="text" id="pq-tarifa-extra" placeholder="USD 25,00" oninput="calcFee()" />
+          </div>
+          <div class="field">
+            <label>Nome do seu negócio</label>
+            <input type="text" id="pq-nome-parceiro" placeholder="Parceiro FX" />
+          </div>
+        </div>
+        <div class="fee-result" id="fee-result">
+          <div class="fee-result-row"><span>Taxa base</span><span id="fr-taxa-base">—</span></div>
+          <div class="fee-result-row"><span>Spread aplicado</span><span id="fr-spread">—</span></div>
+          <div class="fee-result-row total"><span>Taxa final para o cliente</span><span id="fr-taxa-final">—</span></div>
+          <div class="fee-result-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span>Valor estimado de saída</span><span id="fr-valor-final" style="color:var(--green);font-weight:700">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-top:16px">
+        <div class="field">
+          <label>Seu WhatsApp (para receber a resposta do cliente)</label>
+          <input type="text" id="pq-whatsapp-parceiro" placeholder="5511999999999" />
+        </div>
+        <div class="field">
+          <label>Observações para o cliente</label>
+          <input type="text" id="pq-obs-cliente" placeholder="Ex: Sujeito à confirmação de fundos." />
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <button class="btn btn-green btn-full btn-lg" onclick="gerarClienteLink()">
+        🔗 Gerar link de cotação para o cliente
+      </button>
+
+      <div class="link-box" id="cl-link-box">
+        <div class="link-label">✅ Link para o cliente gerado</div>
+        <div class="link-text" id="cl-link-text"></div>
+        <div class="link-actions">
+          <button class="btn btn-ghost" onclick="copiar('cl-link-text')">📋 Copiar link</button>
+          <a id="cl-wa-btn" class="btn btn-green" href="#" target="_blank">💬 Enviar ao cliente</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 4 — CLIENTE: vê cotação final, aceita ou recusa
+     URL: index.html#q=BASE64
+════════════════════════════════════════════════════════ -->
+<div id="view-quote">
+  <div class="card" style="max-width:760px;margin:0 auto;border-radius:0;border-left:none;border-right:none">
+    <div class="quote-hero">
+      <div class="quote-company" id="q-empresa">Mutual Pay</div>
+      <div class="quote-title">Cotação Formal</div>
+      <div class="quote-subtitle" id="q-tipo"></div>
+      <div class="expiry-badge" id="q-expiry-badge"><div class="pulse"></div><span id="q-expiry-text">Carregando...</span></div>
+    </div>
+    <div class="card-header">
+      <div class="card-title">Detalhes da operação</div>
+      <div class="op-id" id="q-id">—</div>
+    </div>
+    <div class="quote-values">
+      <div class="value-block"><div class="value-amount" id="q-valor-origem">—</div><div class="value-currency" id="q-moeda-origem"></div></div>
+      <div class="value-arrow">→</div>
+      <div class="value-block"><div class="value-amount" id="q-valor-destino">—</div><div class="value-currency" id="q-moeda-destino"></div></div>
+    </div>
+    <div class="rate-row">Taxa: <strong id="q-taxa">—</strong>&nbsp;·&nbsp;Tarifas: <strong id="q-tarifas">—</strong></div>
+    <div class="details-grid">
+      <div class="detail-cell"><div class="detail-label">SLA / Liquidação</div><div class="detail-value" id="q-sla">—</div></div>
+      <div class="detail-cell"><div class="detail-label">Validade desta cotação</div><div class="detail-value" id="q-validade">—</div></div>
+    </div>
+    <div class="parties-row">
+      <div class="party-cell"><div class="detail-label">Remetente</div><div class="detail-value" id="q-remetente">—</div><div style="font-size:11px;color:var(--muted);margin-top:2px" id="q-pais-remetente"></div></div>
+      <div class="party-cell"><div class="detail-label">Beneficiário</div><div class="detail-value" id="q-beneficiario">—</div><div style="font-size:11px;color:var(--muted);margin-top:2px" id="q-pais-beneficiario"></div></div>
+    </div>
+    <div class="obs-block" id="q-obs-block" style="display:none"><strong style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.8px">Observações</strong><div id="q-obs" style="margin-top:5px"></div></div>
+    <div class="quote-actions">
+      <p class="disclaimer">Ao aceitar, você confirma ter lido e concordado com todas as condições desta cotação.<br/>A execução está sujeita à confirmação de fundos e lastro.</p>
+      <div class="actions-row">
+        <button class="btn btn-green btn-lg" onclick="responder('aceitar')">✅ Aceitar cotação</button>
+        <button class="btn btn-red btn-lg" onclick="responder('recusar')">❌ Recusar / Renegociar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 5 — CONFIRMAÇÃO
+════════════════════════════════════════════════════════ -->
+<div id="view-confirmation">
+  <div style="max-width:520px;margin:0 auto;padding:60px 20px;text-align:center">
+    <div class="confirm-icon" id="c-icon"></div>
+    <div class="confirm-title" id="c-title"></div>
+    <div class="confirm-sub" id="c-sub"></div>
+    <div class="confirm-id" id="c-id"></div>
+    <a id="c-wa-btn" class="btn btn-green btn-lg" href="#" target="_blank" style="display:inline-flex">💬 Confirmar pelo WhatsApp</a>
+    <p style="margin-top:14px;font-size:12px;color:var(--muted)">O botão abre o WhatsApp com mensagem pré-preenchida para confirmar sua decisão.</p>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function enc(obj) { return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))); }
+function dec(s)   { return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+function fv(n)    { return n ? Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; }
+function fdh(s)   { return s ? new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
+function copiar(id) { navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>alert('Copiado!')); }
+
+function statusClass(s) {
+  if (!s) return '';
+  if (s === 'Aprovado') return 'status-ok';
+  if (s === 'Bloqueado' || s === 'Pendência documental') return 'status-bad';
+  return 'status-warn';
+}
+
+// ══════════════════════════════════════════
+// ROUTER
+// ══════════════════════════════════════════
+function showOnly(id) {
+  ['view-intake','view-trader','view-pquote','view-quote','view-confirmation'].forEach(v => {
+    document.getElementById(v).style.display = v === id ? 'block' : 'none';
+  });
+}
+
+function route() {
+  const hash = window.location.hash;
+  if (!hash || hash === '#') {
+    showOnly('view-intake');
+    // preencher validade default (+2h)
+    const d = new Date(Date.now() + 2*60*60*1000);
+    const tVal = document.getElementById('t-validade');
+    if (tVal && !tVal.value) tVal.value = d.toISOString().slice(0,16);
+    document.getElementById('header-step').innerHTML = '<div class="step-dot" style="background:var(--accent-light)"></div> Etapa 1 de 4 — Parceiro';
+  } else if (hash.startsWith('#intake=')) {
+    carregarTraderView(hash.slice(8));
+    document.getElementById('header-step').innerHTML = '<div class="step-dot" style="background:var(--purple)"></div> Etapa 2 de 4 — Trader';
+  } else if (hash.startsWith('#pquote=')) {
+    carregarPartnerQuoteView(hash.slice(8));
+    document.getElementById('header-step').innerHTML = '<div class="step-dot" style="background:var(--gold)"></div> Etapa 3 de 4 — Parceiro';
+  } else if (hash.startsWith('#q=')) {
+    carregarClienteView(hash.slice(3));
+    document.getElementById('header-step').innerHTML = '<div class="step-dot" style="background:var(--green)"></div> Etapa 4 de 4 — Cliente';
+  }
+}
+
+window.addEventListener('hashchange', route);
+
+// ══════════════════════════════════════════
+// ETAPA 1: Parceiro → gera link para o trader
+// ══════════════════════════════════════════
+function gerarIntakeLink() {
+  const d = {
+    type: 'intake',
+    parceiro:           document.getElementById('i-parceiro').value.trim(),
+    whatsappParceiro:   document.getElementById('i-whatsapp-parceiro').value.trim().replace(/\D/g,''),
+    tipo:               document.getElementById('i-tipo').value,
+    moedaOrigem:        document.getElementById('i-moeda-origem').value,
+    valor:              document.getElementById('i-valor').value,
+    moedaDestino:       document.getElementById('i-moeda-destino').value,
+    paisDestino:        document.getElementById('i-pais-destino').value.trim(),
+    slaDesejado:        document.getElementById('i-sla-desejado').value,
+    proposito:          document.getElementById('i-proposito').value.trim(),
+    invoice:            document.getElementById('i-invoice').value.trim(),
+    remetente:          document.getElementById('i-remetente').value.trim(),
+    paisRemetente:      document.getElementById('i-pais-remetente').value.trim(),
+    tipoDoc:            document.getElementById('i-tipo-doc').value,
+    numDoc:             document.getElementById('i-num-doc').value.trim(),
+    statusKyc:          document.getElementById('i-status-kyc').value,
+    endRemetente:       document.getElementById('i-end-remetente').value.trim(),
+    docsRemetente:      document.getElementById('i-docs-remetente').value.trim(),
+    beneficiario:       document.getElementById('i-beneficiario').value.trim(),
+    ramo:               document.getElementById('i-ramo').value.trim(),
+    website:            document.getElementById('i-website').value.trim(),
+    docRegistro:        document.getElementById('i-doc-registro').value.trim(),
+    statusKyb:          document.getElementById('i-status-kyb').value,
+    endBeneficiario:    document.getElementById('i-end-beneficiario').value.trim(),
+    kybDocs:            document.getElementById('i-kyb-docs').value.trim(),
+  };
+  if (!d.parceiro || !d.whatsappParceiro || !d.valor || !d.remetente || !d.beneficiario) {
+    alert('Preencha os campos obrigatórios: parceiro, WhatsApp, valor, remetente e beneficiário.');
+    return;
+  }
+  const link = location.href.split('#')[0] + '#intake=' + enc(d);
+  document.getElementById('intake-link-text').textContent = link;
+  document.getElementById('intake-link-box').classList.add('visible');
+  const msg = `*Mutual Pay — Nova solicitação de cotação*\n\nParceiro: ${d.parceiro}\nOperação: ${d.tipo}\nValor: ${fv(d.valor)} ${d.moedaOrigem} → ${d.moedaDestino}\nRemetente: ${d.remetente}\nBeneficiário: ${d.beneficiario}\n\n🔗 Abrir para revisar e cotar:\n${link}`;
+  document.getElementById('intake-wa-btn').href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+}
+
+// ══════════════════════════════════════════
+// ETAPA 2: Trader vê dados e envia cotação base
+// ══════════════════════════════════════════
+let intakeData = null;
+
+function carregarTraderView(encoded) {
+  try { intakeData = dec(encoded); } catch(e) { alert('Link inválido.'); return; }
+  const d = intakeData;
+  showOnly('view-trader');
+
+  document.getElementById('t-parceiro').textContent      = d.parceiro || '—';
+  document.getElementById('t-parceiro-badge').textContent = d.parceiro || '';
+  document.getElementById('t-wp-parceiro').textContent   = d.whatsappParceiro ? `+${d.whatsappParceiro}` : '—';
+  document.getElementById('t-tipo').textContent          = d.tipo || '—';
+  document.getElementById('t-valor').textContent         = `${fv(d.valor)} ${d.moedaOrigem}`;
+  document.getElementById('t-moeda-origem').textContent  = d.moedaOrigem || '—';
+  document.getElementById('t-moeda-destino').textContent = d.moedaDestino || '—';
+  document.getElementById('t-pais-destino').textContent  = d.paisDestino || '—';
+  document.getElementById('t-sla-desejado').textContent  = d.slaDesejado || '—';
+  document.getElementById('t-proposito').textContent     = d.proposito || '—';
+  document.getElementById('t-invoice').textContent       = d.invoice || '—';
+  document.getElementById('t-remetente').textContent     = d.remetente || '—';
+  document.getElementById('t-pais-remetente').textContent = d.paisRemetente || '—';
+  document.getElementById('t-doc-remetente').textContent = [d.tipoDoc, d.numDoc].filter(Boolean).join(' ') || '—';
+  document.getElementById('t-end-remetente').textContent = d.endRemetente || '—';
+  document.getElementById('t-docs-remetente').textContent = d.docsRemetente || '—';
+  document.getElementById('t-beneficiario').textContent  = d.beneficiario || '—';
+  document.getElementById('t-ramo').textContent          = d.ramo || '—';
+  document.getElementById('t-website').textContent       = d.website || '—';
+  document.getElementById('t-doc-registro').textContent  = d.docRegistro || '—';
+  document.getElementById('t-end-beneficiario').textContent = d.endBeneficiario || '—';
+  document.getElementById('t-kyb-docs').textContent      = d.kybDocs || '—';
+
+  // status badges
+  const kycEl = document.getElementById('t-status-kyc');
+  kycEl.textContent = d.statusKyc || '—';
+  kycEl.className = 'info-value ' + statusClass(d.statusKyc);
+  document.getElementById('t-kyc-badge').innerHTML = d.statusKyc
+    ? `<span class="${statusClass(d.statusKyc)}" style="font-size:12px">KYC: ${d.statusKyc}</span>` : '';
+
+  const kybEl = document.getElementById('t-status-kyb');
+  kybEl.textContent = d.statusKyb || '—';
+  kybEl.className = 'info-value ' + statusClass(d.statusKyb);
+  document.getElementById('t-kyb-badge').innerHTML = d.statusKyb
+    ? `<span class="${statusClass(d.statusKyb)}" style="font-size:12px">KYB: ${d.statusKyb}</span>` : '';
+
+  // preencher ID automático e validade
+  const hoje = new Date();
+  const seq = String(Math.floor(Math.random()*9999)+1).padStart(4,'0');
+  document.getElementById('t-id').value = `OTC-${hoje.getFullYear()}-${seq}`;
+  const val = new Date(Date.now() + 4*60*60*1000);
+  document.getElementById('t-validade').value = val.toISOString().slice(0,16);
+}
+
+function gerarPartnerQuoteLink() {
+  if (!intakeData) return;
+  const id       = document.getElementById('t-id').value.trim();
+  const taxa     = document.getElementById('t-taxa').value;
+  const valDest  = document.getElementById('t-valor-destino').value;
+  const tarifas  = document.getElementById('t-tarifas').value.trim();
+  const sla      = document.getElementById('t-sla').value;
+  const validade = document.getElementById('t-validade').value;
+  const whatsapp = document.getElementById('t-whatsapp').value.trim().replace(/\D/g,'');
+  const trader   = document.getElementById('t-trader').value.trim();
+  const obs      = document.getElementById('t-obs').value.trim();
+
+  if (!id || !taxa || !validade || !whatsapp) {
+    alert('Preencha: ID da operação, taxa base, validade e seu WhatsApp.');
+    return;
+  }
+
+  const pq = {
+    type: 'pquote',
+    ...intakeData,
+    id, taxaBase: taxa, valorDestinoBase: valDest,
+    tarifasBase: tarifas, sla, validade,
+    whatsappTrader: whatsapp, trader, obsTrader: obs,
+    empresa: 'Mutual Pay'
+  };
+
+  const link = location.href.split('#')[0] + '#pquote=' + enc(pq);
+  document.getElementById('pq-link-text').textContent = link;
+  document.getElementById('pq-link-box').classList.add('visible');
+  const msg = `*Mutual Pay — Cotação base pronta (${id})*\n\nAcesse o link para ver sua cotação base e gerar o link para o cliente:\n\n${link}\n\n⏰ Válida até: ${fdh(validade)}`;
+  document.getElementById('pq-wa-btn').href = `https://wa.me/${intakeData.whatsappParceiro}?text=${encodeURIComponent(msg)}`;
+}
+
+// ══════════════════════════════════════════
+// ETAPA 3: Parceiro aplica fee e gera link cliente
+// ══════════════════════════════════════════
+let pqData = null;
+
+function carregarPartnerQuoteView(encoded) {
+  try { pqData = dec(encoded); } catch(e) { alert('Link inválido.'); return; }
+  const d = pqData;
+  showOnly('view-pquote');
+
+  document.getElementById('pq-id').textContent             = d.id || '—';
+  document.getElementById('pq-tipo').textContent           = d.tipo || '—';
+  document.getElementById('pq-partes').textContent         = `${d.remetente} → ${d.beneficiario}`;
+  document.getElementById('pq-valor-origem').textContent   = `${fv(d.valor)} ${d.moedaOrigem}`;
+  document.getElementById('pq-valor-destino-base').textContent = d.valorDestinoBase ? `${fv(d.valorDestinoBase)} ${d.moedaDestino}` : '—';
+  document.getElementById('pq-taxa-base').textContent      = d.taxaBase ? `1 ${d.moedaOrigem} = ${d.taxaBase} ${d.moedaDestino}` : '—';
+  document.getElementById('pq-tarifas-base').textContent   = d.tarifasBase || 'Incluídas';
+  document.getElementById('pq-sla').textContent            = d.sla || '—';
+  document.getElementById('pq-validade').textContent       = fdh(d.validade);
+
+  if (d.obsTrader) {
+    document.getElementById('pq-obs').textContent = d.obsTrader;
+  } else {
+    document.getElementById('pq-obs-block').style.display = 'none';
+  }
+
+  // init fee calc
+  document.getElementById('fr-taxa-base').textContent = d.taxaBase
+    ? `1 ${d.moedaOrigem} = ${d.taxaBase} ${d.moedaDestino}` : '—';
+  calcFee();
+
+  // pré-preencher whatsapp do parceiro
+  if (d.whatsappParceiro) {
+    document.getElementById('pq-whatsapp-parceiro').value = d.whatsappParceiro;
+  }
+  if (d.parceiro) {
+    document.getElementById('pq-nome-parceiro').value = d.parceiro;
+  }
+}
+
+function calcFee() {
+  if (!pqData) return;
+  const spread   = parseFloat(document.getElementById('pq-spread').value) || 0;
+  const taxaBase = parseFloat(pqData.taxaBase) || 0;
+  const valor    = parseFloat(pqData.valor) || 0;
+  const valorDestBase = parseFloat(pqData.valorDestinoBase) || 0;
+
+  // aplica spread: reduz o valor que o cliente recebe
+  // taxa final = taxaBase * (1 - spread/100) para câmbio direto
+  const taxaFinal = taxaBase > 0 ? taxaBase * (1 - spread/100) : 0;
+  const valorFinal = valorDestBase > 0
+    ? valorDestBase * (1 - spread/100)
+    : (taxaFinal > 0 ? valor / taxaFinal : 0); // fallback se não tiver valorDest
+
+  document.getElementById('fr-spread').textContent = spread
+    ? `-${spread.toFixed(2)}% (spread)` : '0%';
+  document.getElementById('fr-taxa-final').textContent = taxaFinal
+    ? `1 ${pqData.moedaOrigem} = ${taxaFinal.toFixed(4)} ${pqData.moedaDestino}` : '—';
+  document.getElementById('fr-valor-final').textContent = valorFinal
+    ? `${fv(valorFinal)} ${pqData.moedaDestino}` : '—';
+}
+
+function gerarClienteLink() {
+  if (!pqData) return;
+  const spread   = parseFloat(document.getElementById('pq-spread').value) || 0;
+  const taxaBase = parseFloat(pqData.taxaBase) || 0;
+  const valor    = parseFloat(pqData.valor) || 0;
+  const valorDestBase = parseFloat(pqData.valorDestinoBase) || 0;
+  const taxaFinal  = taxaBase * (1 - spread/100);
+  const valorFinal = valorDestBase > 0
+    ? valorDestBase * (1 - spread/100)
+    : (taxaFinal > 0 ? valor / taxaFinal : 0);
+  const tarifaExtra = document.getElementById('pq-tarifa-extra').value.trim();
+  const wpParceiro  = document.getElementById('pq-whatsapp-parceiro').value.trim().replace(/\D/g,'');
+  const nomeParceiro = document.getElementById('pq-nome-parceiro').value.trim() || pqData.parceiro || 'Parceiro';
+  const obsCli      = document.getElementById('pq-obs-cliente').value.trim();
+
+  if (!wpParceiro) {
+    alert('Informe seu WhatsApp para o cliente poder responder.');
+    return;
+  }
+
+  const tarifasFinal = [pqData.tarifasBase, tarifaExtra].filter(Boolean).join(' + ') || 'Incluídas';
+
+  const cl = {
+    type: 'quote',
+    id:              pqData.id,
+    tipo:            pqData.tipo,
+    empresa:         nomeParceiro,
+    remetente:       pqData.remetente,
+    beneficiario:    pqData.beneficiario,
+    paisRemetente:   pqData.paisRemetente,
+    paisBeneficiario: pqData.paisDestino,
+    moedaOrigem:     pqData.moedaOrigem,
+    valorOrigem:     pqData.valor,
+    moedaDestino:    pqData.moedaDestino,
+    valorDestino:    valorFinal.toFixed(2),
+    taxa:            taxaFinal.toFixed(4),
+    tarifas:         tarifasFinal,
+    sla:             pqData.sla,
+    validade:        pqData.validade,
+    whatsapp:        wpParceiro,
+    obs:             obsCli
+  };
+
+  const link = location.href.split('#')[0] + '#q=' + enc(cl);
+  document.getElementById('cl-link-text').textContent = link;
+  document.getElementById('cl-link-box').classList.add('visible');
+  const msg = `*Cotação para sua operação (${cl.id})*\n\nOlá! Segue a cotação para a sua operação de câmbio:\n\n${link}\n\n⏰ Válida até: ${fdh(cl.validade)}\n\nQualquer dúvida, estamos à disposição.`;
+  document.getElementById('cl-wa-btn').href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+}
+
+// ══════════════════════════════════════════
+// ETAPA 4: Cliente vê e responde
+// ══════════════════════════════════════════
+let qData = null;
+
+function carregarClienteView(encoded) {
+  try { qData = dec(encoded); } catch(e) { alert('Link de cotação inválido.'); return; }
+  const d = qData;
+  showOnly('view-quote');
+
+  document.getElementById('q-empresa').textContent    = d.empresa || 'Mutual Pay';
+  document.getElementById('q-tipo').textContent       = d.tipo || '';
+  document.getElementById('q-id').textContent         = d.id || '—';
+  document.getElementById('q-valor-origem').textContent = fv(d.valorOrigem);
+  document.getElementById('q-moeda-origem').textContent = d.moedaOrigem || '';
+  document.getElementById('q-valor-destino').textContent = fv(d.valorDestino);
+  document.getElementById('q-moeda-destino').textContent = d.moedaDestino || '';
+  document.getElementById('q-taxa').textContent       = d.taxa ? `1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}` : '—';
+  document.getElementById('q-tarifas').textContent    = d.tarifas || 'Incluídas';
+  document.getElementById('q-sla').textContent        = d.sla || '—';
+  document.getElementById('q-validade').textContent   = fdh(d.validade);
+  document.getElementById('q-remetente').textContent  = d.remetente || '—';
+  document.getElementById('q-pais-remetente').textContent  = d.paisRemetente || '';
+  document.getElementById('q-beneficiario').textContent = d.beneficiario || '—';
+  document.getElementById('q-pais-beneficiario').textContent = d.paisBeneficiario || '';
+
+  if (d.obs) {
+    document.getElementById('q-obs-block').style.display = 'block';
+    document.getElementById('q-obs').textContent = d.obs;
+  }
+  iniciarContador(d.validade);
+}
+
+function iniciarContador(validadeStr) {
+  function att() {
+    const diff = new Date(validadeStr).getTime() - Date.now();
+    const badge = document.getElementById('q-expiry-badge');
+    const texto = document.getElementById('q-expiry-text');
+    if (diff <= 0) {
+      badge.classList.add('expired');
+      badge.querySelector('.pulse').style.display = 'none';
+      texto.textContent = 'Cotação expirada';
+      document.querySelector('button[onclick="responder(\'aceitar\')"]').disabled = true;
+      return;
+    }
+    const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+    texto.textContent = `Válida por ${h>0?h+'h ':''}${m}m ${s}s`;
+  }
+  att(); setInterval(att, 1000);
+}
+
+function responder(acao) {
+  if (!qData) return;
+  const d = qData;
+  const agora = new Date().toLocaleString('pt-BR');
+  let msg, titulo, sub, icon;
+
+  if (acao === 'aceitar') {
+    icon = '✅'; titulo = 'Cotação aceita!';
+    sub = `Seu aceite foi registrado em ${agora}.\nEntraremos em contato para confirmar os fundos e iniciar a execução.`;
+    msg = `✅ *ACEITE — ${d.id}*\n\nOlá, confirmo o aceite da cotação:\n\n*Operação:* ${d.id}\n*Valor:* ${fv(d.valorOrigem)} ${d.moedaOrigem} → ${fv(d.valorDestino)} ${d.moedaDestino}\n*Taxa:* 1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}\n*Aceito em:* ${agora}\n\nAguardo orientações para confirmação de fundos.`;
+  } else {
+    icon = '❌'; titulo = 'Recusa registrada';
+    sub = `Sua recusa foi registrada em ${agora}.\nEntraremos em contato para discutir novas condições.`;
+    msg = `❌ *RECUSA — ${d.id}*\n\nNão aceito as condições atuais da cotação:\n\n*Operação:* ${d.id}\n*Taxa recusada:* 1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}\n*Registrado em:* ${agora}\n\nGostaria de renegociar. Favor retornar com nova proposta.`;
+  }
+
+  showOnly('view-confirmation');
+  document.getElementById('c-icon').textContent = icon;
+  document.getElementById('c-title').textContent = titulo;
+  document.getElementById('c-sub').textContent = sub;
+  document.getElementById('c-id').textContent = d.id;
+  document.getElementById('c-wa-btn').href = `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(msg)}`;
+}
+
+// INIT
+route();
+</script>
+</body>
+</html>
