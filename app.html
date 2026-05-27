@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Mutual Pay — OTC CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0a0e1a;--surface:#111827;--surface2:#1a2236;--border:#1e2d47;
+  --accent:#2563eb;--accent-light:#3b82f6;--gold:#f59e0b;--green:#10b981;
+  --red:#ef4444;--purple:#8b5cf6;--text:#f1f5f9;--muted:#94a3b8;--r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent-light);text-decoration:none}
+
+/* NAV */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:12px}
+.logo{font-size:17px;font-weight:700}.logo span{color:var(--accent-light)}
+.badge{background:var(--accent);color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.nav-user{font-size:12px;color:var(--muted)}
+.nav-role{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 8px;border-radius:4px}
+.role-trader{background:rgba(139,92,246,.2);color:var(--purple)}
+.role-partner{background:rgba(16,185,129,.15);color:var(--green)}
+
+/* LAYOUT */
+.page{display:none;max-width:1100px;margin:0 auto;padding:32px 20px 80px}
+.page.active{display:block}
+
+/* HEADINGS */
+h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+.card-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.card-body{padding:18px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:800}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface2);font-weight:700}
+td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+.td-id{font-family:monospace;font-size:12px;color:var(--accent-light)}
+.td-valor{font-weight:700}
+
+/* STATUS BADGE */
+.status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.s-demanda{background:rgba(148,163,184,.12);color:var(--muted)}
+.s-kyb{background:rgba(245,158,11,.12);color:var(--gold)}
+.s-cotacao{background:rgba(139,92,246,.12);color:var(--purple)}
+.s-aguardando{background:rgba(59,130,246,.12);color:var(--accent-light)}
+.s-execucao{background:rgba(16,185,129,.12);color:var(--green)}
+.s-concluida{background:rgba(16,185,129,.2);color:var(--green)}
+.s-bloqueada{background:rgba(239,68,68,.12);color:var(--red)}
+
+/* FORM */
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent-light);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.section-label:first-child{margin-top:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid.c1{grid-template-columns:1fr}.form-grid.c3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:580px){.form-grid,.form-grid.c3{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent-light)}
+.field select option{background:var(--surface2)}
+.field textarea{resize:vertical;min-height:60px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s,transform .1s;text-decoration:none;white-space:nowrap}
+.btn:hover{opacity:.88;transform:translateY(-1px)}.btn:active{transform:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-full{width:100%;justify-content:center}
+.btn-lg{padding:13px 22px;font-size:15px}
+
+/* MODAL */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;overflow-y:auto;padding:40px 16px}
+.modal-backdrop.open{display:flex;justify-content:center;align-items:flex-start}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:720px;overflow:hidden}
+.modal-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:14px;font-weight:700}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px}
+.modal-body{padding:20px;max-height:75vh;overflow-y:auto}
+
+/* INFO GRID (read-only) */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-radius:7px;overflow:hidden;margin-bottom:12px}
+.info-grid.c1{grid-template-columns:1fr}
+.info-cell{background:var(--surface2);padding:10px 14px}
+.info-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:2px}
+.info-value{font-size:13px;font-weight:600;color:var(--text);line-height:1.4}
+.info-value.sm{font-weight:400;font-size:12px;color:var(--muted)}
+@media(max-width:480px){.info-grid{grid-template-columns:1fr}}
+
+/* ALERTS */
+.alert{border-radius:7px;padding:11px 14px;font-size:13px;margin-bottom:14px}
+.alert-gold{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--gold)}
+.alert-green{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:var(--green)}
+.alert-blue{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.25);color:var(--accent-light)}
+.alert-red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red)}
+
+/* LINK BOX */
+.link-box{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:14px}
+.link-box.visible{display:block}
+.link-label{font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.link-text{font-size:11px;font-family:monospace;color:var(--accent-light);word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:10px}
+.link-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+.tab.active{color:var(--accent-light);border-bottom-color:var(--accent-light)}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.filter-bar input,.filter-bar select{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-size:13px;outline:none}
+.filter-bar input{min-width:200px}
+
+/* LOGIN PAGE */
+#page-login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:36px;width:100%;max-width:400px}
+.login-logo{font-size:24px;font-weight:800;margin-bottom:6px}.login-logo span{color:var(--accent-light)}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+
+/* DIVIDER */
+hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
+
+/* KYC/KYB color */
+.kyc-ok{color:var(--green);font-weight:700}
+.kyc-warn{color:var(--gold);font-weight:700}
+.kyc-bad{color:var(--red);font-weight:700}
+
+/* FEE CALC */
+.fee-box{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:16px;margin-top:14px}
+.fee-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.fee-row.total{border-top:1px solid var(--border);margin-top:8px;padding-top:10px;font-size:15px;font-weight:700;color:var(--green)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-text{font-size:14px}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;font-weight:600;z-index:999;transform:translateY(80px);opacity:0;transition:.3s;max-width:320px}
+#toast.show{transform:none;opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="page-login">
+  <div class="login-box">
+    <div class="login-logo">Mutual<span>Pay</span></div>
+    <div class="login-sub">OTC Desk — acesso restrito</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>E-mail</label>
+      <input type="email" id="login-email" placeholder="seu@email.com" />
+    </div>
+    <div class="field" style="margin-bottom:20px">
+      <label>Senha</label>
+      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn btn-primary btn-full btn-lg" onclick="doLogin()">Entrar</button>
+    <div id="login-error" style="margin-top:12px;font-size:12px;color:var(--red);display:none"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<nav id="main-nav" style="display:none">
+  <div class="logo">Mutual<span>Pay</span></div>
+  <div class="badge">OTC Desk</div>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-email"></span>
+    <span class="nav-role" id="nav-role"></span>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sair</button>
+  </div>
+</nav>
+
+<!-- ═══════════════ TRADER DASHBOARD ═══════════════ -->
+<div class="page" id="page-trader">
+  <h1>Dashboard — Trader</h1>
+  <p class="sub">Todas as operações dos parceiros</p>
+
+  <div class="stats" id="trader-stats">
+    <div class="stat"><div class="stat-label">Total</div><div class="stat-value" id="s-total">—</div></div>
+    <div class="stat"><div class="stat-label">Aguardando cotação</div><div class="stat-value" id="s-pending">—</div></div>
+    <div class="stat"><div class="stat-label">Em andamento</div><div class="stat-value" id="s-active">—</div></div>
+    <div class="stat"><div class="stat-label">Concluídas</div><div class="stat-value" id="s-done">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Operações</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-purple btn-sm" onclick="openCreatePartner()">+ Novo parceiro</button>
+      </div>
+    </div>
+    <div class="card-body" style="padding:14px">
+      <div class="filter-bar">
+        <input type="text" id="t-search" placeholder="Buscar por ID, remetente, beneficiário..." oninput="filterOps()" />
+        <select id="t-filter-status" onchange="filterOps()">
+          <option value="">Todos os status</option>
+          <option>Demanda recebida</option>
+          <option>Em validação KYB/KYC</option>
+          <option>Cotação enviada ao parceiro</option>
+          <option>Aguardando aceite do cliente</option>
+          <option>Em execução</option>
+          <option>Concluída</option>
+          <option>Bloqueada/recusada</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Op.</th><th>Parceiro</th><th>Remetente → Beneficiário</th>
+              <th>Valor</th><th>Status</th><th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="trader-ops-body">
+            <tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Carregando...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PARTNER DASHBOARD ═══════════════ -->
+<div class="page" id="page-partner">
+  <h1 id="partner-greeting">Olá</h1>
+  <p class="sub">Suas operações OTC</p>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+    <button class="btn btn-primary" onclick="openNewOp()">+ Nova solicitação</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Minhas operações</div></div>
+    <div class="card-body" style="padding:14px">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID Op.</th><th>Remetente → Beneficiário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
+          </thead>
+          <tbody id="partner-ops-body">
+            <tr><td colspan="5"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Carregando...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: DETALHES DA OPERAÇÃO ═══════════════ -->
+<div class="modal-backdrop" id="modal-op">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-op-title">Operação</div>
+      <button class="modal-close" onclick="closeModal('modal-op')">×</button>
+    </div>
+    <div class="modal-body" id="modal-op-body"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: NOVA OPERAÇÃO (parceiro) ═══════════════ -->
+<div class="modal-backdrop" id="modal-new-op">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nova solicitação de cotação</div>
+      <button class="modal-close" onclick="closeModal('modal-new-op')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Dados da operação</div>
+      <div class="form-grid c3">
+        <div class="field"><label>Tipo</label><select id="n-tipo"><option>Câmbio Internacional</option><option>OTC FX Spot</option><option>OTC FX Forward</option><option>NDF</option><option>Stablecoin → BRL</option><option>BRL → Stablecoin</option><option>Remessa Internacional</option></select></div>
+        <div class="field"><label>Moeda origem *</label><select id="n-moeda-origem"><option>BRL</option><option>USD</option><option>EUR</option><option>GBP</option><option>USDT</option><option>USDC</option></select></div>
+        <div class="field"><label>Valor *</label><input type="number" id="n-valor" placeholder="100000" step="0.01"/></div>
+        <div class="field"><label>Moeda destino *</label><select id="n-moeda-destino"><option>USD</option><option>BRL</option><option>EUR</option><option>GBP</option><option>USDT</option><option>USDC</option></select></div>
+        <div class="field"><label>País destino *</label><input type="text" id="n-pais-destino" placeholder="USA"/></div>
+        <div class="field"><label>SLA desejado</label><select id="n-sla-desejado"><option>Sem preferência</option><option>D+0</option><option>D+1</option><option>D+2</option></select></div>
+      </div>
+      <div class="form-grid c1" style="margin-top:12px">
+        <div class="field"><label>Propósito / bens e serviços *</label><textarea id="n-proposito" placeholder="Descreva o motivo econômico da operação"></textarea></div>
+        <div class="field"><label>Invoice / referência documental</label><textarea id="n-invoice" placeholder="Ex: Invoice INV-2024-089 — USD 18.500"></textarea></div>
+      </div>
+
+      <div class="section-label">Remetente</div>
+      <div class="form-grid">
+        <div class="field"><label>Nome completo *</label><input type="text" id="n-remetente" placeholder="Nome / Razão social"/></div>
+        <div class="field"><label>País</label><input type="text" id="n-pais-remetente" placeholder="Brasil"/></div>
+        <div class="field"><label>Tipo de documento</label><select id="n-tipo-doc"><option value="">—</option><option>CPF</option><option>RG</option><option>Passaporte</option><option>CNPJ</option><option>Tax ID</option><option>Outro</option></select></div>
+        <div class="field"><label>Número do documento *</label><input type="text" id="n-num-doc" placeholder="000.000.000-00"/></div>
+        <div class="field"><label>Status KYC</label><select id="n-status-kyc"><option value="">—</option><option>Aprovado</option><option>Em validação</option><option>Pendente</option><option>Pendência documental</option></select></div>
+      </div>
+      <div class="form-grid c1" style="margin-top:12px">
+        <div class="field"><label>Endereço *</label><textarea id="n-end-remetente" placeholder="Rua, número, cidade, estado, país, CEP"></textarea></div>
+        <div class="field"><label>Documentos recebidos (checklist)</label><textarea id="n-docs-remetente" placeholder="Documento com foto ✓, Comprovante de endereço ✓, Invoice ✓"></textarea></div>
+      </div>
+
+      <div class="section-label">Beneficiário</div>
+      <div class="form-grid">
+        <div class="field"><label>Nome legal *</label><input type="text" id="n-beneficiario" placeholder="Empresa XYZ Inc"/></div>
+        <div class="field"><label>Ramo de atividade *</label><input type="text" id="n-ramo" placeholder="Tecnologia, Importação..."/></div>
+        <div class="field"><label>Website</label><input type="url" id="n-website" placeholder="https://empresa.com"/></div>
+        <div class="field"><label>Documento de registro *</label><input type="text" id="n-doc-registro" placeholder="EIN, Company Nr, CNPJ..."/></div>
+        <div class="field"><label>Status KYB</label><select id="n-status-kyb"><option value="">—</option><option>Aprovado</option><option>Em validação</option><option>Pendente</option><option>Pendência documental</option></select></div>
+      </div>
+      <div class="form-grid c1" style="margin-top:12px">
+        <div class="field"><label>Endereço *</label><textarea id="n-end-beneficiario" placeholder="Rua, número, cidade, estado, país, ZIP"></textarea></div>
+        <div class="field"><label>Documentos KYB (checklist)</label><textarea id="n-kyb-docs" placeholder="Articles of Inc ✓, ID dos sócios ✓"></textarea></div>
+      </div>
+
+      <hr class="div"/>
+      <button class="btn btn-primary btn-full btn-lg" onclick="submitNewOp()">📤 Enviar solicitação</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: CRIAR PARCEIRO (trader) ═══════════════ -->
+<div class="modal-backdrop" id="modal-create-partner">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title">Criar conta de parceiro</div>
+      <button class="modal-close" onclick="closeModal('modal-create-partner')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-blue">O parceiro receberá o acesso por e-mail e poderá criar uma senha.</div>
+      <div class="form-grid c1">
+        <div class="field"><label>Nome do parceiro *</label><input type="text" id="cp-name" placeholder="João Silva"/></div>
+        <div class="field"><label>Empresa</label><input type="text" id="cp-company" placeholder="Parceiro FX Ltda"/></div>
+        <div class="field"><label>WhatsApp (DDI+DDD+número)</label><input type="text" id="cp-whatsapp" placeholder="5511999999999"/></div>
+        <div class="field"><label>E-mail *</label><input type="email" id="cp-email" placeholder="parceiro@email.com"/></div>
+        <div class="field"><label>Senha temporária *</label><input type="text" id="cp-pass" placeholder="Mínimo 6 caracteres"/></div>
+      </div>
+      <hr class="div"/>
+      <button class="btn btn-purple btn-full btn-lg" onclick="createPartner()">Criar parceiro</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG SUPABASE
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://ffutcnptgsuzzdjfljuf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_n-vatxXMcL3_dehpL-LZ1w_vk9fRyKw';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+let currentUser = null;
+let currentProfile = null;
+let allOps = [];
+let partnerNames = {};
+
+function fv(n){ return n ? Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; }
+function fd(s){ return s ? new Date(s).toLocaleDateString('pt-BR') : '—'; }
+function fdh(s){ return s ? new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
+
+function toast(msg, type='ok'){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = type==='ok' ? 'var(--green)' : type==='err' ? 'var(--red)' : 'var(--gold)';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function statusClass(s){
+  const m = {
+    'Demanda recebida':'s-demanda',
+    'Em validação KYB/KYC':'s-kyb',
+    'Cotação enviada ao parceiro':'s-cotacao',
+    'Aguardando aceite do cliente':'s-aguardando',
+    'Em execução':'s-execucao',
+    'Concluída':'s-concluida',
+    'Bloqueada/recusada':'s-bloqueada'
+  };
+  return m[s] || 's-demanda';
+}
+
+function statusDot(s){
+  return `<span class="status ${statusClass(s)}">${s}</span>`;
+}
+
+function kycClass(s){
+  if(s==='Aprovado') return 'kyc-ok';
+  if(s==='Pendência documental'||s==='Bloqueado') return 'kyc-bad';
+  return 'kyc-warn';
+}
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ errEl.textContent = 'E-mail ou senha incorretos.'; errEl.style.display='block'; return; }
+  await initSession(data.user);
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  document.getElementById('page-login').style.display = 'flex';
+  document.getElementById('main-nav').style.display = 'none';
+  showPage(null);
+}
+
+async function initSession(user){
+  currentUser = user;
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  currentProfile = profile;
+
+  document.getElementById('page-login').style.display = 'none';
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('nav-email').textContent = user.email;
+
+  if(profile?.role === 'trader'){
+    document.getElementById('nav-role').textContent = 'Trader';
+    document.getElementById('nav-role').className = 'nav-role role-trader';
+    await loadTraderDashboard();
+    showPage('page-trader');
+  } else {
+    document.getElementById('nav-role').textContent = 'Parceiro';
+    document.getElementById('nav-role').className = 'nav-role role-partner';
+    document.getElementById('partner-greeting').textContent = `Olá, ${profile?.name || user.email.split('@')[0]}`;
+    await loadPartnerDashboard();
+    showPage('page-partner');
+  }
+}
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  if(id) document.getElementById(id)?.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// TRADER DASHBOARD
+// ══════════════════════════════════════════
+async function loadTraderDashboard(){
+  // load partner names
+  const { data: partners } = await sb.from('profiles').select('id,name,company').eq('role','partner');
+  partnerNames = {};
+  (partners||[]).forEach(p => { partnerNames[p.id] = p.company || p.name || p.id.slice(0,8); });
+
+  const { data: ops, error } = await sb.from('operations').select('*').order('created_at',{ascending:false});
+  if(error){ toast('Erro ao carregar operações: '+error.message,'err'); return; }
+  allOps = ops || [];
+  renderTraderStats(allOps);
+  renderTraderOps(allOps);
+}
+
+function renderTraderStats(ops){
+  document.getElementById('s-total').textContent = ops.length;
+  document.getElementById('s-pending').textContent = ops.filter(o=>o.status==='Demanda recebida').length;
+  document.getElementById('s-active').textContent = ops.filter(o=>['Em validação KYB/KYC','Cotação enviada ao parceiro','Aguardando aceite do cliente','Em execução'].includes(o.status)).length;
+  document.getElementById('s-done').textContent = ops.filter(o=>o.status==='Concluída').length;
+}
+
+function renderTraderOps(ops){
+  const tbody = document.getElementById('trader-ops-body');
+  if(!ops.length){ tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma operação encontrada</div></div></td></tr>`; return; }
+  tbody.innerHTML = ops.map(o => `
+    <tr onclick="openOpDetail('${o.id}')">
+      <td class="td-id">${o.op_id}</td>
+      <td>${partnerNames[o.partner_id]||'—'}</td>
+      <td>${o.remetente||'—'} → ${o.beneficiario||'—'}</td>
+      <td class="td-valor">${fv(o.valor)} ${o.moeda_origem||''}</td>
+      <td>${statusDot(o.status)}</td>
+      <td>${fd(o.created_at)}</td>
+    </tr>`).join('');
+}
+
+function filterOps(){
+  const q = document.getElementById('t-search').value.toLowerCase();
+  const st = document.getElementById('t-filter-status').value;
+  const filtered = allOps.filter(o => {
+    const match = !q || [o.op_id,o.remetente,o.beneficiario,partnerNames[o.partner_id]].some(v=>(v||'').toLowerCase().includes(q));
+    const statusMatch = !st || o.status === st;
+    return match && statusMatch;
+  });
+  renderTraderOps(filtered);
+}
+
+// ══════════════════════════════════════════
+// PARTNER DASHBOARD
+// ══════════════════════════════════════════
+async function loadPartnerDashboard(){
+  const { data: ops, error } = await sb.from('operations').select('*').eq('partner_id',currentUser.id).order('created_at',{ascending:false});
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  renderPartnerOps(ops||[]);
+}
+
+function renderPartnerOps(ops){
+  const tbody = document.getElementById('partner-ops-body');
+  if(!ops.length){ tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma operação ainda. Clique em "Nova solicitação" para começar.</div></div></td></tr>`; return; }
+  tbody.innerHTML = ops.map(o => `
+    <tr onclick="openOpDetail('${o.id}')">
+      <td class="td-id">${o.op_id}</td>
+      <td>${o.remetente||'—'} → ${o.beneficiario||'—'}</td>
+      <td class="td-valor">${fv(o.valor)} ${o.moeda_origem||''}</td>
+      <td>${statusDot(o.status)}</td>
+      <td>${fd(o.created_at)}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════
+// OPERATION DETAIL MODAL
+// ══════════════════════════════════════════
+let currentOp = null;
+
+async function openOpDetail(id){
+  const { data: op, error } = await sb.from('operations').select('*').eq('id',id).single();
+  if(error||!op){ toast('Erro ao carregar operação','err'); return; }
+  currentOp = op;
+
+  document.getElementById('modal-op-title').textContent = `Operação ${op.op_id}`;
+  const isTrader = currentProfile?.role === 'trader';
+  document.getElementById('modal-op-body').innerHTML = buildOpDetailHTML(op, isTrader);
+  openModal('modal-op');
+}
+
+function buildOpDetailHTML(op, isTrader){
+  const kc = s => `<span class="${kycClass(s)}">${s||'—'}</span>`;
+
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    ${statusDot(op.status)}
+    ${isTrader ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="status-select" onchange="updateStatus('${op.id}',this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px">
+        <option value="">Alterar status...</option>
+        <option>Demanda recebida</option><option>Em validação KYB/KYC</option>
+        <option>Cotação enviada ao parceiro</option><option>Aguardando aceite do cliente</option>
+        <option>Em execução</option><option>Concluída</option><option>Bloqueada/recusada</option>
+      </select>
+    </div>` : ''}
+  </div>
+
+  <div class="section-label">Operação</div>
+  <div class="info-grid">
+    <div class="info-cell"><div class="info-label">Tipo</div><div class="info-value">${op.tipo||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Valor</div><div class="info-value">${fv(op.valor)} ${op.moeda_origem||''} → ${op.moeda_destino||''}</div></div>
+    <div class="info-cell"><div class="info-label">País destino</div><div class="info-value">${op.pais_destino||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">SLA desejado</div><div class="info-value">${op.sla_desejado||'—'}</div></div>
+  </div>
+  <div class="info-grid c1">
+    <div class="info-cell"><div class="info-label">Propósito</div><div class="info-value sm">${op.proposito||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Invoice / Referência</div><div class="info-value sm">${op.invoice||'—'}</div></div>
+  </div>
+
+  <div class="section-label">Remetente <span class="${kycClass(op.status_kyc)}" style="margin-left:8px;font-size:11px">KYC: ${op.status_kyc||'—'}</span></div>
+  <div class="info-grid">
+    <div class="info-cell"><div class="info-label">Nome</div><div class="info-value">${op.remetente||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">País</div><div class="info-value">${op.pais_remetente||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Documento</div><div class="info-value">${[op.tipo_doc,op.num_doc].filter(Boolean).join(' ')||'—'}</div></div>
+  </div>
+  <div class="info-grid c1">
+    <div class="info-cell"><div class="info-label">Endereço</div><div class="info-value sm">${op.end_remetente||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Documentos</div><div class="info-value sm">${op.docs_remetente||'—'}</div></div>
+  </div>
+
+  <div class="section-label">Beneficiário <span class="${kycClass(op.status_kyb)}" style="margin-left:8px;font-size:11px">KYB: ${op.status_kyb||'—'}</span></div>
+  <div class="info-grid">
+    <div class="info-cell"><div class="info-label">Nome legal</div><div class="info-value">${op.beneficiario||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Ramo</div><div class="info-value">${op.ramo||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Website</div><div class="info-value sm">${op.website||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Registro</div><div class="info-value">${op.doc_registro||'—'}</div></div>
+  </div>
+  <div class="info-grid c1">
+    <div class="info-cell"><div class="info-label">Endereço</div><div class="info-value sm">${op.end_beneficiario||'—'}</div></div>
+    <div class="info-cell"><div class="info-label">Documentos KYB</div><div class="info-value sm">${op.kyb_docs||'—'}</div></div>
+  </div>`;
+
+  // TRADER: formulário de cotação base
+  if(isTrader && !op.taxa_base){
+    html += `
+    <div class="section-label">Sua cotação base — para o parceiro</div>
+    <div class="alert alert-gold">⚠️ Esta cotação vai ao parceiro. Ele aplicará o fee dele antes de enviar ao cliente.</div>
+    <div class="form-grid">
+      <div class="field"><label>Taxa base *</label><input type="number" id="q-taxa" placeholder="5.4050" step="0.0001"/></div>
+      <div class="field"><label>Valor saída estimado</label><input type="number" id="q-val-dest" placeholder="18500" step="0.01"/></div>
+      <div class="field"><label>Tarifas / Fees da mesa</label><input type="text" id="q-tarifas" placeholder="USD 50,00"/></div>
+      <div class="field"><label>SLA *</label><select id="q-sla"><option>D+0 (mesmo dia)</option><option>D+1</option><option selected>D+2</option><option>D+3</option><option>A combinar</option></select></div>
+      <div class="field"><label>Validade *</label><input type="datetime-local" id="q-validade"/></div>
+    </div>
+    <div class="form-grid c1" style="margin-top:10px">
+      <div class="field"><label>Observações para o parceiro</label><textarea id="q-obs" placeholder="Ex: Cotação válida para os dados enviados. Qualquer alteração de banco exige nova validação."></textarea></div>
+    </div>
+    <hr class="div"/>
+    <button class="btn btn-purple btn-full btn-lg" onclick="submitTraderQuote('${op.id}')">📨 Salvar cotação base</button>`;
+
+    // pre-fill validade (+4h)
+    setTimeout(()=>{
+      const el = document.getElementById('q-validade');
+      if(el) el.value = new Date(Date.now()+4*3600000).toISOString().slice(0,16);
+    },100);
+  }
+
+  // Cotação base já salva
+  if(op.taxa_base){
+    html += `
+    <div class="section-label">Cotação base registrada</div>
+    <div class="info-grid">
+      <div class="info-cell"><div class="info-label">Taxa base</div><div class="info-value">1 ${op.moeda_origem} = ${op.taxa_base} ${op.moeda_destino}</div></div>
+      <div class="info-cell"><div class="info-label">Valor saída estimado</div><div class="info-value">${fv(op.valor_destino_base)} ${op.moeda_destino||''}</div></div>
+      <div class="info-cell"><div class="info-label">Tarifas da mesa</div><div class="info-value">${op.tarifas_base||'—'}</div></div>
+      <div class="info-cell"><div class="info-label">SLA</div><div class="info-value">${op.sla||'—'}</div></div>
+      <div class="info-cell"><div class="info-label">Validade</div><div class="info-value">${fdh(op.validade)}</div></div>
+    </div>
+    ${op.obs_trader?`<div class="info-grid c1"><div class="info-cell"><div class="info-label">Observações</div><div class="info-value sm">${op.obs_trader}</div></div></div>`:''}`;
+  }
+
+  // PARCEIRO: calculadora de fee + gerador de link para cliente
+  if(!isTrader && op.taxa_base){
+    html += `
+    <div class="section-label">Aplicar seu fee e gerar link para o cliente</div>
+    <div class="alert alert-blue">ℹ️ O cliente não verá a taxa base do trader — apenas o valor final após seu fee.</div>
+    <div class="fee-box">
+      <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:12px;text-transform:uppercase;letter-spacing:.8px">Calculadora de fee</div>
+      <div class="form-grid c3">
+        <div class="field"><label>Spread (%)</label><input type="number" id="pq-spread" placeholder="0.50" step="0.01" min="0" oninput="calcFeeModal('${op.id}')"/></div>
+        <div class="field"><label>Tarifa fixa extra</label><input type="text" id="pq-tarifa-extra" placeholder="USD 25,00"/></div>
+        <div class="field"><label>Seu WhatsApp</label><input type="text" id="pq-whatsapp" placeholder="5511999999999" value="${currentProfile?.whatsapp||''}"/></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px 14px;margin-top:12px">
+        <div class="fee-row"><span>Taxa base</span><span>1 ${op.moeda_origem} = ${op.taxa_base} ${op.moeda_destino}</span></div>
+        <div class="fee-row"><span>Spread aplicado</span><span id="fr-spread-${op.id}">0%</span></div>
+        <div class="fee-row total"><span>Taxa final cliente</span><span id="fr-taxa-${op.id}">—</span></div>
+        <div class="fee-row" style="margin-top:6px;padding-top:8px;border-top:1px solid var(--border)"><span>Valor estimado de chegada</span><span id="fr-val-${op.id}" style="color:var(--green);font-weight:700">—</span></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Observações para o cliente</label><input type="text" id="pq-obs-cli" placeholder="Ex: Sujeito à confirmação de fundos."/></div>
+    </div>
+    <hr class="div"/>
+    <button class="btn btn-green btn-full btn-lg" onclick="gerarLinkCliente('${op.id}')">🔗 Gerar link para o cliente</button>
+    <div class="link-box" id="cli-link-box-${op.id}">
+      <div class="link-label">✅ Link gerado — envie ao cliente</div>
+      <div class="link-text" id="cli-link-text-${op.id}"></div>
+      <div class="link-actions">
+        <button class="btn btn-ghost btn-sm" onclick="copiar('cli-link-text-${op.id}')">📋 Copiar</button>
+        <a id="cli-wa-${op.id}" class="btn btn-green btn-sm" href="#" target="_blank">💬 WhatsApp</a>
+      </div>
+    </div>`;
+
+    // init calc
+    setTimeout(()=>calcFeeModal(op.id), 100);
+  }
+
+  // Cotação final registrada
+  if(op.taxa_final){
+    html += `
+    <div class="section-label">Cotação final enviada ao cliente</div>
+    <div class="info-grid">
+      <div class="info-cell"><div class="info-label">Taxa final</div><div class="info-value">1 ${op.moeda_origem} = ${op.taxa_final} ${op.moeda_destino}</div></div>
+      <div class="info-cell"><div class="info-label">Valor final</div><div class="info-value">${fv(op.valor_destino_final)} ${op.moeda_destino||''}</div></div>
+      <div class="info-cell"><div class="info-label">Spread</div><div class="info-value">${op.spread||0}%</div></div>
+      <div class="info-cell"><div class="info-label">Tarifas finais</div><div class="info-value">${op.tarifas_final||'—'}</div></div>
+    </div>`;
+  }
+
+  // Resposta do cliente
+  if(op.cliente_aceite !== null && op.cliente_aceite !== undefined){
+    html += `
+    <div class="section-label">Resposta do cliente</div>
+    <div class="alert ${op.cliente_aceite ? 'alert-green' : 'alert-red'}">
+      ${op.cliente_aceite ? '✅ Cliente aceitou a cotação' : '❌ Cliente recusou / solicitou renegociação'}
+      — ${fdh(op.cliente_aceite_at)}
+    </div>`;
+  }
+
+  return html;
+}
+
+function calcFeeModal(opId){
+  const op = currentOp;
+  if(!op) return;
+  const spread = parseFloat(document.getElementById('pq-spread')?.value)||0;
+  const taxaBase = parseFloat(op.taxa_base)||0;
+  const valorDestBase = parseFloat(op.valor_destino_base)||0;
+  const taxaFinal = taxaBase*(1-spread/100);
+  const valorFinal = valorDestBase*(1-spread/100);
+
+  const sEl = document.getElementById(`fr-spread-${opId}`);
+  const tEl = document.getElementById(`fr-taxa-${opId}`);
+  const vEl = document.getElementById(`fr-val-${opId}`);
+  if(sEl) sEl.textContent = `-${spread.toFixed(2)}%`;
+  if(tEl) tEl.textContent = `1 ${op.moeda_origem} = ${taxaFinal.toFixed(4)} ${op.moeda_destino}`;
+  if(vEl) vEl.textContent = valorFinal ? `${fv(valorFinal)} ${op.moeda_destino}` : '—';
+}
+
+// ══════════════════════════════════════════
+// ACTIONS
+// ══════════════════════════════════════════
+async function updateStatus(opId, newStatus){
+  if(!newStatus) return;
+  const { error } = await sb.from('operations').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', opId);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast(`Status atualizado: ${newStatus}`);
+  currentOp.status = newStatus;
+  // refresh
+  if(currentProfile?.role==='trader') await loadTraderDashboard();
+  closeModal('modal-op');
+}
+
+async function submitTraderQuote(opId){
+  const taxa    = document.getElementById('q-taxa')?.value;
+  const valDest = document.getElementById('q-val-dest')?.value;
+  const tarifas = document.getElementById('q-tarifas')?.value.trim();
+  const sla     = document.getElementById('q-sla')?.value;
+  const validade= document.getElementById('q-validade')?.value;
+  const obs     = document.getElementById('q-obs')?.value.trim();
+
+  if(!taxa||!sla||!validade){ toast('Preencha taxa, SLA e validade.','warn'); return; }
+
+  const { error } = await sb.from('operations').update({
+    taxa_base: parseFloat(taxa),
+    valor_destino_base: valDest ? parseFloat(valDest) : null,
+    tarifas_base: tarifas,
+    sla, obs_trader: obs,
+    validade: new Date(validade).toISOString(),
+    status: 'Cotação enviada ao parceiro',
+    updated_at: new Date().toISOString()
+  }).eq('id', opId);
+
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('Cotação base salva e status atualizado!');
+  closeModal('modal-op');
+  await loadTraderDashboard();
+}
+
+function gerarLinkCliente(opId){
+  const op = currentOp;
+  const spread   = parseFloat(document.getElementById('pq-spread')?.value)||0;
+  const taxaBase = parseFloat(op.taxa_base)||0;
+  const valorDestBase = parseFloat(op.valor_destino_base)||0;
+  const taxaFinal  = parseFloat((taxaBase*(1-spread/100)).toFixed(4));
+  const valorFinal = parseFloat((valorDestBase*(1-spread/100)).toFixed(2));
+  const tarifaExtra = document.getElementById('pq-tarifa-extra')?.value.trim()||'';
+  const wp          = (document.getElementById('pq-whatsapp')?.value||'').replace(/\D/g,'');
+  const obsCli      = document.getElementById('pq-obs-cli')?.value.trim()||'';
+
+  if(!wp){ toast('Informe seu WhatsApp para o cliente poder responder.','warn'); return; }
+
+  const tarifasFinal = [op.tarifas_base, tarifaExtra].filter(Boolean).join(' + ')||'Incluídas';
+
+  // salva cotação final no banco
+  sb.from('operations').update({
+    spread, taxa_final: taxaFinal, valor_destino_final: valorFinal,
+    tarifas_final: tarifasFinal, obs_cliente: obsCli,
+    status: 'Aguardando aceite do cliente', updated_at: new Date().toISOString()
+  }).eq('id', opId);
+
+  const cl = {
+    type:'quote', id:op.op_id, tipo:op.tipo,
+    empresa: currentProfile?.company||currentProfile?.name||'Parceiro',
+    remetente: op.remetente, beneficiario: op.beneficiario,
+    paisRemetente: op.pais_remetente, paisBeneficiario: op.pais_destino,
+    moedaOrigem: op.moeda_origem, valorOrigem: op.valor,
+    moedaDestino: op.moeda_destino, valorDestino: valorFinal.toString(),
+    taxa: taxaFinal.toString(), tarifas: tarifasFinal,
+    sla: op.sla, validade: op.validade, whatsapp: wp, obs: obsCli
+  };
+
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(cl))));
+  const link = window.location.origin + '/index.html#q=' + encoded;
+
+  const boxEl = document.getElementById(`cli-link-box-${opId}`);
+  const textEl = document.getElementById(`cli-link-text-${opId}`);
+  const waEl   = document.getElementById(`cli-wa-${opId}`);
+  if(boxEl) boxEl.classList.add('visible');
+  if(textEl) textEl.textContent = link;
+
+  const msg = `*Cotação para sua operação (${op.op_id})*\n\nOlá! Segue a cotação para revisão e aceite:\n\n${link}\n\n⏰ Válida até: ${fdh(op.validade)}`;
+  if(waEl) waEl.href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  toast('Link gerado com sucesso!');
+}
+
+// ══════════════════════════════════════════
+// NOVA OPERAÇÃO (parceiro)
+// ══════════════════════════════════════════
+function openNewOp(){
+  ['n-tipo','n-moeda-origem','n-valor','n-moeda-destino','n-pais-destino','n-sla-desejado',
+   'n-proposito','n-invoice','n-remetente','n-pais-remetente','n-tipo-doc','n-num-doc',
+   'n-status-kyc','n-end-remetente','n-docs-remetente','n-beneficiario','n-ramo',
+   'n-website','n-doc-registro','n-status-kyb','n-end-beneficiario','n-kyb-docs']
+  .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  openModal('modal-new-op');
+}
+
+async function submitNewOp(){
+  const valor     = document.getElementById('n-valor').value;
+  const remetente = document.getElementById('n-remetente').value.trim();
+  const beneficiario = document.getElementById('n-beneficiario').value.trim();
+  const proposito = document.getElementById('n-proposito').value.trim();
+
+  if(!valor||!remetente||!beneficiario||!proposito){
+    toast('Preencha os campos obrigatórios: valor, remetente, beneficiário e propósito.','warn'); return;
+  }
+
+  const ano = new Date().getFullYear();
+  const seq = String(Math.floor(Math.random()*9999)+1).padStart(4,'0');
+  const opId = `OTC-${ano}-${seq}`;
+
+  const { error } = await sb.from('operations').insert({
+    op_id: opId,
+    partner_id: currentUser.id,
+    status: 'Demanda recebida',
+    tipo:          document.getElementById('n-tipo').value,
+    moeda_origem:  document.getElementById('n-moeda-origem').value,
+    valor:         parseFloat(valor),
+    moeda_destino: document.getElementById('n-moeda-destino').value,
+    pais_destino:  document.getElementById('n-pais-destino').value.trim(),
+    sla_desejado:  document.getElementById('n-sla-desejado').value,
+    proposito, invoice: document.getElementById('n-invoice').value.trim(),
+    remetente, pais_remetente: document.getElementById('n-pais-remetente').value.trim(),
+    tipo_doc:      document.getElementById('n-tipo-doc').value,
+    num_doc:       document.getElementById('n-num-doc').value.trim(),
+    status_kyc:    document.getElementById('n-status-kyc').value,
+    end_remetente: document.getElementById('n-end-remetente').value.trim(),
+    docs_remetente: document.getElementById('n-docs-remetente').value.trim(),
+    beneficiario,  ramo:  document.getElementById('n-ramo').value.trim(),
+    website:       document.getElementById('n-website').value.trim(),
+    doc_registro:  document.getElementById('n-doc-registro').value.trim(),
+    status_kyb:    document.getElementById('n-status-kyb').value,
+    end_beneficiario: document.getElementById('n-end-beneficiario').value.trim(),
+    kyb_docs:      document.getElementById('n-kyb-docs').value.trim(),
+  });
+
+  if(error){ toast('Erro ao criar operação: '+error.message,'err'); return; }
+  toast(`Operação ${opId} criada com sucesso!`);
+  closeModal('modal-new-op');
+  await loadPartnerDashboard();
+}
+
+// ══════════════════════════════════════════
+// CRIAR PARCEIRO (trader)
+// ══════════════════════════════════════════
+function openCreatePartner(){ openModal('modal-create-partner'); }
+
+async function createPartner(){
+  const name    = document.getElementById('cp-name').value.trim();
+  const company = document.getElementById('cp-company').value.trim();
+  const whatsapp= document.getElementById('cp-whatsapp').value.trim().replace(/\D/g,'');
+  const email   = document.getElementById('cp-email').value.trim();
+  const pass    = document.getElementById('cp-pass').value;
+
+  if(!name||!email||!pass){ toast('Preencha nome, e-mail e senha.','warn'); return; }
+
+  // Usa Admin API via função Edge Function ou service role
+  // Para MVP sem edge function: usa signUp direto (funciona se Email Confirm está desligado)
+  const { data, error } = await sb.auth.signUp({
+    email, password: pass,
+    options: { data: { name, company, whatsapp, role: 'partner' } }
+  });
+
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast(`Parceiro ${name} criado! E-mail: ${email}`);
+  closeModal('modal-create-partner');
+}
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function copiar(id){
+  const el = document.getElementById(id);
+  if(el) navigator.clipboard.writeText(el.textContent).then(()=>toast('Copiado!'));
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+sb.auth.onAuthStateChange(async (event, session) => {
+  if(session?.user) await initSession(session.user);
+});
+
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if(session?.user) await initSession(session.user);
+  else document.getElementById('page-login').style.display = 'flex';
+});
+</script>
+</body>
+</html>
