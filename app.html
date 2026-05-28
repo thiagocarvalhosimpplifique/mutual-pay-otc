@@ -227,6 +227,28 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
 /* BANKING SECTION */
 .bank-card{background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:14px;margin-top:4px}
 
+/* REALTIME BADGE */
+.rt-badge{display:none;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--green);letter-spacing:.3px}
+.rt-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:rtpulse 2s infinite}
+@keyframes rtpulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* PARTNER STATS */
+.p-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:900px){.p-stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.p-stats{grid-template-columns:1fr 1fr}}
+.p-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.p-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.p-stat-value{font-size:22px;font-weight:800;line-height:1}
+.p-stat-sub{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* CONTA RECEBIMENTO */
+.conta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:7px;overflow:hidden}
+@media(max-width:600px){.conta-grid{grid-template-columns:1fr 1fr}}
+.conta-cell{background:var(--surface2);padding:10px 14px}
+.conta-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:3px}
+.conta-value{font-size:13px;font-weight:600;color:var(--text)}
+.conta-pix{font-size:14px;font-weight:800;color:var(--green);font-family:monospace;letter-spacing:.5px}
+
 /* DESTINATÁRIOS */
 .dest-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px}
 .dest-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
@@ -267,8 +289,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
   <div class="logo">Mutual<span>Pay</span></div>
   <div class="badge">OTC Desk</div>
   <div class="nav-right">
+    <span class="rt-badge" id="realtime-badge"><span class="rt-dot"></span>Ao vivo</span>
     <span class="nav-user" id="nav-email"></span>
     <span class="nav-role" id="nav-role"></span>
+    <button class="btn btn-ghost btn-sm" id="btn-settings" style="display:none" onclick="openModal('modal-settings')" title="Conta de recebimento">⚙️</button>
     <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sair</button>
   </div>
 </nav>
@@ -366,13 +390,52 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
 
 <!-- ═══════════════ PARTNER DASHBOARD ═══════════════ -->
 <div class="page" id="page-partner">
-  <h1 id="partner-greeting">Olá</h1>
-  <p class="sub">Suas operações OTC</p>
-
-  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div>
+      <h1 id="partner-greeting">Olá</h1>
+      <p class="sub" style="margin-bottom:0">Painel de operações OTC</p>
+    </div>
     <button class="btn btn-primary" onclick="openNewOp()">+ Nova solicitação</button>
   </div>
 
+  <!-- Mini-dash stats -->
+  <div class="p-stats">
+    <div class="p-stat">
+      <div class="p-stat-label">Operações</div>
+      <div class="p-stat-value" id="ps-total">—</div>
+    </div>
+    <div class="p-stat">
+      <div class="p-stat-label">Volume total</div>
+      <div class="p-stat-value" id="ps-volume" style="font-size:17px">—</div>
+      <div class="p-stat-sub" id="ps-moeda"></div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(16,185,129,.25)">
+      <div class="p-stat-label" style="color:var(--green)">Concluídas</div>
+      <div class="p-stat-value" id="ps-concluidas" style="color:var(--green)">—</div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(245,158,11,.25)">
+      <div class="p-stat-label" style="color:var(--gold)">Em andamento</div>
+      <div class="p-stat-value" id="ps-andamento" style="color:var(--gold)">—</div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(16,185,129,.2)">
+      <div class="p-stat-label" style="color:var(--green)">Receita estimada</div>
+      <div class="p-stat-value" id="ps-receita" style="font-size:17px;color:var(--green)">—</div>
+      <div class="p-stat-sub">spread aplicado</div>
+    </div>
+  </div>
+
+  <!-- Conta para recebimento dos clientes -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-title">🏦 Conta para recebimento dos clientes</div>
+      <button class="btn btn-ghost btn-sm" onclick="loadContaRecebimento()">↺</button>
+    </div>
+    <div class="card-body" style="padding:16px" id="conta-recebimento-card">
+      <div class="empty" style="padding:14px 0"><div class="empty-text">Carregando...</div></div>
+    </div>
+  </div>
+
+  <!-- Tabela de operações -->
   <div class="card">
     <div class="card-header"><div class="card-title">Minhas operações</div></div>
     <div class="card-body" style="padding:14px">
@@ -544,6 +607,35 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: CONFIGURAÇÕES (trader) ═══════════════ -->
+<div class="modal-backdrop" id="modal-settings">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Conta para recebimento dos clientes</div>
+      <button class="modal-close" onclick="closeModal('modal-settings')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-blue" style="margin-bottom:16px">Esta conta aparece para os parceiros orientarem seus clientes a enviar os fundos para a mesa OTC.</div>
+      <div class="form-grid c1">
+        <div class="field"><label>Titular *</label><input type="text" id="set-titular" placeholder="Mutual Capital Ltda"/></div>
+        <div class="field"><label>CNPJ</label><input type="text" id="set-cnpj" placeholder="00.000.000/0001-00"/></div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="field"><label>Banco</label><input type="text" id="set-banco" placeholder="Ex: Itaú, BTG Pactual"/></div>
+        <div class="field"><label>Tipo de conta</label>
+          <select id="set-tipo"><option>Conta Corrente</option><option>Conta Pagamento</option><option>Conta Poupança</option></select>
+        </div>
+        <div class="field"><label>Agência</label><input type="text" id="set-agencia" placeholder="1234"/></div>
+        <div class="field"><label>Número da conta</label><input type="text" id="set-conta" placeholder="12345-6"/></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Chave PIX *</label><input type="text" id="set-pix" placeholder="CNPJ, e-mail ou telefone"/></div>
+      <div class="field" style="margin-top:10px"><label>Observação para o parceiro</label><textarea id="set-obs" placeholder="Ex: Identificar a TED/PIX com o número da operação OTC-XXXX" style="min-height:60px"></textarea></div>
+      <hr class="div"/>
+      <button class="btn btn-green btn-full btn-lg" onclick="saveContaRecebimento()">💾 Salvar conta de recebimento</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -621,10 +713,13 @@ async function doLogin(){
 }
 
 async function doLogout(){
+  if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
   await sb.auth.signOut();
   currentUser = null; currentProfile = null;
   document.getElementById('page-login').style.display = 'flex';
   document.getElementById('main-nav').style.display = 'none';
+  const badge = document.getElementById('realtime-badge');
+  if(badge) badge.style.display = 'none';
   showPage(null);
 }
 
@@ -639,6 +734,18 @@ async function initSession(user){
   if(profile?.role === 'trader'){
     document.getElementById('nav-role').textContent = 'Trader';
     document.getElementById('nav-role').className = 'nav-role role-trader';
+    // Mostra botão de configurações para o trader
+    const btnSet = document.getElementById('btn-settings');
+    if(btnSet) btnSet.style.display = 'inline-flex';
+    // Pré-carrega conta de recebimento no modal de settings
+    sb.from('settings').select('value').eq('key','conta_recebimento').single().then(({ data }) => {
+      if(!data?.value) return;
+      const c = data.value;
+      ['titular','cnpj','banco','agencia','conta','tipo','pix','obs'].forEach(k => {
+        const el = document.getElementById('set-'+k);
+        if(el && c[k]) el.value = c[k];
+      });
+    });
     await loadTraderDashboard();
     showPage('page-trader');
   } else {
@@ -648,6 +755,8 @@ async function initSession(user){
     await loadPartnerDashboard();
     showPage('page-partner');
   }
+  // Inicia tempo real após dashboard carregado
+  setupRealtime();
 }
 
 function showPage(id){
@@ -736,7 +845,10 @@ function renderTraderOps(ops){
 async function loadPartnerDashboard(){
   const { data: ops, error } = await sb.from('operations').select('*').eq('partner_id',currentUser.id).order('created_at',{ascending:false});
   if(error){ toast('Erro: '+error.message,'err'); return; }
-  renderPartnerOps(ops||[]);
+  const list = ops || [];
+  renderPartnerStats(list);
+  renderPartnerOps(list);
+  await loadContaRecebimento();
 }
 
 function renderPartnerOps(ops){
@@ -2012,6 +2124,122 @@ async function saveAsClient(tipo, data){
   if(error){ toast('Erro ao salvar cliente: '+error.message,'err'); return null; }
   toast(`✅ Cliente "${data.nome}" salvo!`);
   return saved?.id;
+}
+
+// ══════════════════════════════════════════
+// REALTIME
+// ══════════════════════════════════════════
+let realtimeChannel = null;
+
+function debounce(fn, ms){
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function setupRealtime(){
+  if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+
+  const refreshDash = debounce(async () => {
+    if(currentProfile?.role === 'trader') await loadTraderDashboard();
+    else await loadPartnerDashboard();
+    // se modal de op estiver aberto, recarrega destinatários
+    const modal = document.getElementById('modal-op');
+    if(modal?.classList.contains('open') && currentOp){
+      await loadDestinatarios(currentOp.id);
+    }
+  }, 600);
+
+  const onStatus = status => {
+    const badge = document.getElementById('realtime-badge');
+    if(badge) badge.style.display = status === 'SUBSCRIBED' ? 'inline-flex' : 'none';
+  };
+
+  if(currentProfile?.role === 'trader'){
+    realtimeChannel = sb.channel('trader-live')
+      .on('postgres_changes', { event:'*', schema:'public', table:'operations' }, refreshDash)
+      .on('postgres_changes', { event:'*', schema:'public', table:'notifications' },
+          debounce(() => loadNotifications(), 600))
+      .on('postgres_changes', { event:'*', schema:'public', table:'destinatarios' },
+          debounce(() => { if(currentOp) loadDestinatarios(currentOp.id); }, 400))
+      .subscribe(onStatus);
+  } else {
+    realtimeChannel = sb.channel(`partner-live-${currentUser?.id}`)
+      .on('postgres_changes', {
+        event:'*', schema:'public', table:'operations',
+        filter:`partner_id=eq.${currentUser.id}`
+      }, refreshDash)
+      .on('postgres_changes', { event:'*', schema:'public', table:'destinatarios' },
+          debounce(() => { if(currentOp) loadDestinatarios(currentOp.id); }, 400))
+      .subscribe(onStatus);
+  }
+}
+
+// ══════════════════════════════════════════
+// PARTNER STATS
+// ══════════════════════════════════════════
+function renderPartnerStats(ops){
+  const total      = ops.length;
+  const concluidas = ops.filter(o => o.status === 'Concluída').length;
+  const andamento  = ops.filter(o => !['Concluída','Bloqueada/recusada'].includes(o.status)).length;
+  const volTotal   = ops.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
+  const moedaMain  = ops.length ? (ops[0]?.moeda_origem || 'BRL') : 'BRL';
+  const receitaEst = ops
+    .filter(o => o.spread && o.valor_destino_base)
+    .reduce((s, o) => s + (parseFloat(o.valor_destino_base)||0) * (parseFloat(o.spread)||0) / 100, 0);
+
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('ps-total',      total || '0');
+  set('ps-volume',     fv(volTotal));
+  set('ps-moeda',      moedaMain);
+  set('ps-concluidas', concluidas || '0');
+  set('ps-andamento',  andamento  || '0');
+  set('ps-receita',    receitaEst > 0 ? fv(receitaEst) : '—');
+}
+
+// ══════════════════════════════════════════
+// CONTA DE RECEBIMENTO
+// ══════════════════════════════════════════
+async function loadContaRecebimento(){
+  const el = document.getElementById('conta-recebimento-card');
+  if(!el) return;
+  const { data } = await sb.from('settings').select('value').eq('key','conta_recebimento').single();
+  const c = data?.value || {};
+  if(!c.pix && !c.banco && !c.titular){
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px">⚠️ Conta de recebimento não configurada. Entre em contato com a mesa OTC.</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="conta-grid">
+      ${c.titular ? `<div class="conta-cell" style="grid-column:1/-1">
+        <div class="conta-label">Titular</div>
+        <div class="conta-value" style="font-size:15px;font-weight:800">${c.titular}${c.cnpj ? ' — CNPJ: '+c.cnpj : ''}</div>
+      </div>` : ''}
+      ${c.banco   ? `<div class="conta-cell"><div class="conta-label">Banco</div><div class="conta-value">${c.banco}</div></div>` : ''}
+      ${c.agencia ? `<div class="conta-cell"><div class="conta-label">Agência</div><div class="conta-value">${c.agencia}</div></div>` : ''}
+      ${c.conta   ? `<div class="conta-cell"><div class="conta-label">Conta (${c.tipo||'Corrente'})</div><div class="conta-value">${c.conta}</div></div>` : ''}
+      ${c.pix     ? `<div class="conta-cell" style="grid-column:1/-1"><div class="conta-label">Chave PIX</div><div class="conta-pix">${c.pix}</div></div>` : ''}
+    </div>
+    ${c.obs ? `<div class="alert alert-gold" style="margin-top:10px;font-size:12px">📌 ${c.obs}</div>` : ''}`;
+}
+
+async function saveContaRecebimento(){
+  const value = {
+    titular: document.getElementById('set-titular')?.value.trim() || '',
+    cnpj:    document.getElementById('set-cnpj')?.value.trim()    || '',
+    banco:   document.getElementById('set-banco')?.value.trim()   || '',
+    agencia: document.getElementById('set-agencia')?.value.trim() || '',
+    conta:   document.getElementById('set-conta')?.value.trim()   || '',
+    tipo:    document.getElementById('set-tipo')?.value           || 'Conta Corrente',
+    pix:     document.getElementById('set-pix')?.value.trim()    || '',
+    obs:     document.getElementById('set-obs')?.value.trim()    || '',
+  };
+  const { error } = await sb.from('settings').upsert({
+    key: 'conta_recebimento', value, updated_at: new Date().toISOString()
+  });
+  if(error){ toast('Erro: '+error.message, 'err'); return; }
+  toast('✅ Conta de recebimento salva!');
+  closeModal('modal-settings');
+  // Recarrega o card do parceiro se estiver visível
+  await loadContaRecebimento();
 }
 
 // ══════════════════════════════════════════
