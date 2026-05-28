@@ -292,6 +292,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
     <span class="rt-badge" id="realtime-badge"><span class="rt-dot"></span>Ao vivo</span>
     <span class="nav-user" id="nav-email"></span>
     <span class="nav-role" id="nav-role"></span>
+    <button class="btn btn-ghost btn-sm" id="btn-switch-view" style="display:none" onclick="toggleSimMode()" title="Alternar visão">👁 Ver como parceiro</button>
     <button class="btn btn-ghost btn-sm" id="btn-settings" style="display:none" onclick="openModal('modal-settings')" title="Conta de recebimento">⚙️</button>
     <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sair</button>
   </div>
@@ -390,6 +391,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
 
 <!-- ═══════════════ PARTNER DASHBOARD ═══════════════ -->
 <div class="page" id="page-partner">
+  <!-- Banner de simulação — só aparece quando o trader alterna para visão parceiro -->
+  <div id="sim-banner" style="display:none;background:rgba(139,92,246,.13);border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:11px 16px;margin-bottom:18px;font-size:13px;color:var(--purple);align-items:center;gap:14px;flex-wrap:wrap">
+    <span>⚡ <strong>Modo simulação</strong> — você está vendo o painel como um parceiro.</span>
+    <button class="btn btn-ghost btn-sm" style="border-color:rgba(139,92,246,.4);color:var(--purple)" onclick="toggleSimMode()">↩ Voltar à Mesa OTC</button>
+  </div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
     <div>
       <h1 id="partner-greeting">Olá</h1>
@@ -714,6 +720,7 @@ async function doLogin(){
 
 async function doLogout(){
   if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+  simMode = false;
   await sb.auth.signOut();
   currentUser = null; currentProfile = null;
   document.getElementById('page-login').style.display = 'flex';
@@ -734,9 +741,11 @@ async function initSession(user){
   if(profile?.role === 'trader'){
     document.getElementById('nav-role').textContent = 'Trader';
     document.getElementById('nav-role').className = 'nav-role role-trader';
-    // Mostra botão de configurações para o trader
+    // Mostra botões do trader (configurações + troca de visão)
     const btnSet = document.getElementById('btn-settings');
     if(btnSet) btnSet.style.display = 'inline-flex';
+    const btnSwitch = document.getElementById('btn-switch-view');
+    if(btnSwitch) btnSwitch.style.display = 'inline-flex';
     // Pré-carrega conta de recebimento no modal de settings
     sb.from('settings').select('value').eq('key','conta_recebimento').single().then(({ data }) => {
       if(!data?.value) return;
@@ -843,7 +852,10 @@ function renderTraderOps(ops){
 // PARTNER DASHBOARD
 // ══════════════════════════════════════════
 async function loadPartnerDashboard(){
-  const { data: ops, error } = await sb.from('operations').select('*').eq('partner_id',currentUser.id).order('created_at',{ascending:false});
+  // Em modo simulação o trader vê todas as operações (sem filtro por parceiro)
+  let query = sb.from('operations').select('*').order('created_at',{ascending:false});
+  if(!simMode){ query = query.eq('partner_id', currentUser.id); }
+  const { data: ops, error } = await query;
   if(error){ toast('Erro: '+error.message,'err'); return; }
   const list = ops || [];
   renderPartnerStats(list);
@@ -2145,6 +2157,42 @@ async function saveAsClient(tipo, data){
 // REALTIME
 // ══════════════════════════════════════════
 let realtimeChannel = null;
+let simMode = false; // trader simulando visão de parceiro
+
+// ──────────────────────────────────────────
+// MODO SIMULAÇÃO (trader ↔ parceiro)
+// ──────────────────────────────────────────
+function toggleSimMode(){
+  simMode = !simMode;
+  const btn    = document.getElementById('btn-switch-view');
+  const banner = document.getElementById('sim-banner');
+  const btnSet = document.getElementById('btn-settings');
+
+  if(simMode){
+    // Entra em visão de parceiro
+    currentProfile = { ...currentProfile, role: 'partner' };
+    document.getElementById('nav-role').textContent  = 'Parceiro (sim)';
+    document.getElementById('nav-role').className    = 'nav-role role-partner';
+    document.getElementById('partner-greeting').textContent = `Olá, ${currentProfile?.name || currentUser?.email?.split('@')[0]}`;
+    if(btn)    { btn.textContent = '↩ Mesa OTC'; }
+    if(banner) { banner.style.display = 'flex'; }
+    if(btnSet) { btnSet.style.display = 'none'; }
+    setupRealtime();
+    loadPartnerDashboard();
+    showPage('page-partner');
+  } else {
+    // Volta para trader
+    currentProfile = { ...currentProfile, role: 'trader' };
+    document.getElementById('nav-role').textContent = 'Trader';
+    document.getElementById('nav-role').className   = 'nav-role role-trader';
+    if(btn)    { btn.textContent = '👁 Ver como parceiro'; }
+    if(banner) { banner.style.display = 'none'; }
+    if(btnSet) { btnSet.style.display = 'inline-flex'; }
+    setupRealtime();
+    loadTraderDashboard();
+    showPage('page-trader');
+  }
+}
 
 function debounce(fn, ms){
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -2168,7 +2216,8 @@ function setupRealtime(){
     if(badge) badge.style.display = status === 'SUBSCRIBED' ? 'inline-flex' : 'none';
   };
 
-  if(currentProfile?.role === 'trader'){
+  // Usa canal de trader se for trader real OU em modo simulação (acesso total)
+  if(currentProfile?.role === 'trader' || simMode){
     realtimeChannel = sb.channel('trader-live')
       .on('postgres_changes', { event:'*', schema:'public', table:'operations' }, refreshDash)
       .on('postgres_changes', { event:'*', schema:'public', table:'notifications' },
