@@ -226,6 +226,20 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
 
 /* BANKING SECTION */
 .bank-card{background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:14px;margin-top:4px}
+
+/* DESTINATÁRIOS */
+.dest-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px}
+.dest-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.dest-nome{font-size:13px;font-weight:700;flex:1}
+.dest-rede{font-size:11px;font-weight:600;background:rgba(139,92,246,.12);color:var(--purple);padding:2px 8px;border-radius:12px;white-space:nowrap}
+.dest-info{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.dest-info span b{color:var(--text)}
+.dest-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.s-pendente{background:rgba(148,163,184,.12);color:var(--muted)}
+.s-confirmado{background:rgba(245,158,11,.12);color:var(--gold)}
+.s-enviado{background:rgba(16,185,129,.12);color:var(--green)}
+.s-falhou{background:rgba(239,68,68,.12);color:var(--red)}
+.dest-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:14px}
 </style>
 </head>
 <body>
@@ -765,6 +779,8 @@ async function openOpDetail(id, jumpToQuote){
     : buildPartnerOpHTML(op);
 
   openModal('modal-op');
+  // Carrega destinatários em background
+  setTimeout(()=>loadDestinatarios(op.id), 150);
 
   if(isTrader && jumpToQuote){
     setTimeout(()=>showModalTab('mt-cotacao'), 50);
@@ -826,6 +842,7 @@ function buildTraderOpHTML(op, jumpToQuote){
     <div class="modal-tab" onclick="showModalTab('mt-remetente')">Remetente / KYC</div>
     <div class="modal-tab" onclick="showModalTab('mt-beneficiario')">Beneficiário / KYB</div>
     <div class="modal-tab" onclick="showModalTab('mt-cotacao')">${op.taxa_base?'✅ Cotação':'⚡ Cotar'}</div>
+    <div class="modal-tab" onclick="showModalTab('mt-destinatarios')">👥 Destinatários</div>
   </div>`;
 
   // ── Tab Operação ──
@@ -1039,8 +1056,9 @@ function buildTraderOpHTML(op, jumpToQuote){
   </div>`;
 
   const tabCot = `<div class="tab-panel" id="mt-cotacao">${cotBody}</div>`;
+  const tabDest = `<div class="tab-panel" id="mt-destinatarios"><div class="empty" style="padding:30px 0"><div class="empty-icon">⏳</div><div class="empty-text">Carregando destinatários...</div></div></div>`;
 
-  return statusBar + tabOp + tabRem + tabBen + tabCot;
+  return statusBar + tabOp + tabRem + tabBen + tabCot + tabDest;
 }
 
 // ── Salva seção editável do trader ──────────────────────────
@@ -1149,6 +1167,7 @@ function buildPartnerOpHTML(op){
     <div class="modal-tab" onclick="showModalTab('pt-rem')">Remetente / KYC</div>
     <div class="modal-tab" onclick="showModalTab('pt-ben')">Beneficiário / KYB</div>
     ${hasCotacao ? `<div class="modal-tab" onclick="showModalTab('pt-cot')">💱 Cotação</div>` : ''}
+    <div class="modal-tab" onclick="showModalTab('pt-dest')">👥 Destinatários</div>
   </div>
 
   <!-- Tab: Operação -->
@@ -1278,6 +1297,7 @@ function buildPartnerOpHTML(op){
   </div>`;
   }
 
+  html += `<div class="tab-panel" id="pt-dest"><div class="empty" style="padding:30px 0"><div class="empty-icon">⏳</div><div class="empty-text">Carregando destinatários...</div></div></div>`;
   return html;
 }
 
@@ -1316,9 +1336,9 @@ function showModalTab(tabId){
   document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
   const panel = document.getElementById(tabId);
   if(panel) panel.classList.add('active');
-  const tabMap = {'mt-op':0,'mt-remetente':1,'mt-beneficiario':2,'mt-cotacao':3};
-  const tabs = document.querySelectorAll('.modal-tab');
-  if(tabs[tabMap[tabId]]) tabs[tabMap[tabId]].classList.add('active');
+  // Encontra o tab button pelo onclick sem precisar de índice fixo
+  const trigger = document.querySelector(`.modal-tab[onclick*="'${tabId}'"]`);
+  if(trigger) trigger.classList.add('active');
 }
 
 function calcFeeModal(opId){
@@ -1677,6 +1697,204 @@ function renderNotifications(notifs){
         <span class="${n.sent_email?'ns-ok':'ns-pend'}">${n.sent_email?'📧 E-mail':'📧 —'}</span>
       </div>
     </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+// DESTINATÁRIOS DE LIQUIDAÇÃO
+// ══════════════════════════════════════════
+function destStatusDot(s){
+  const m = { pendente:'s-pendente', confirmado:'s-confirmado', enviado:'s-enviado', falhou:'s-falhou' };
+  const l = { pendente:'Pendente', confirmado:'Confirmado', enviado:'✓ Enviado', falhou:'✕ Falhou' };
+  return `<span class="status ${m[s]||'s-pendente'}">${l[s]||s}</span>`;
+}
+
+function buildDestForm(opId, extraFields){
+  const redes = ['Tron (TRC20)','Ethereum (ERC20)','BNB Smart Chain','Solana','Polygon','PIX','SWIFT / Wire','Transferência bancária','Outro'];
+  const moedas = ['USDT','USDC','BRL','USD','EUR','BTC','ETH'];
+  return `
+  <div class="bank-card" style="margin-top:12px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-light);margin-bottom:12px">+ Adicionar destinatário</div>
+    <div class="form-grid" style="margin-bottom:10px">
+      <div class="field"><label>Nome *</label><input type="text" id="nd-nome" placeholder="Nome / empresa"/></div>
+      <div class="field"><label>Documento</label><input type="text" id="nd-doc" placeholder="CPF, CNPJ, Tax ID"/></div>
+      <div class="field"><label>Moeda</label>
+        <select id="nd-moeda">${moedas.map(v=>`<option>${v}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Valor *</label><input type="number" id="nd-valor" placeholder="5000.00" step="0.01"/></div>
+      <div class="field"><label>Rede / Método</label>
+        <select id="nd-rede"><option value="">— Selecionar —</option>${redes.map(v=>`<option>${v}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Carteira / Chave PIX</label><input type="text" id="nd-carteira" placeholder="Endereço ou chave PIX"/></div>
+      <div class="field"><label>Banco</label><input type="text" id="nd-banco" placeholder="Ex: Itaú, JPMorgan"/></div>
+      <div class="field"><label>SWIFT / BIC</label><input type="text" id="nd-swift" placeholder="Ex: CHASUS33"/></div>
+      <div class="field"><label>IBAN / Conta</label><input type="text" id="nd-iban" placeholder="IBAN ou número de conta"/></div>
+      <div class="field"><label>Agência / Routing</label><input type="text" id="nd-agencia" placeholder="Ex: 021000021"/></div>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>Observações</label><input type="text" id="nd-notes" placeholder="Qualquer detalhe adicional"/></div>
+    <button class="btn btn-primary btn-sm" onclick="addDestinatario('${opId}')">+ Adicionar destinatário</button>
+  </div>`;
+}
+
+async function loadDestinatarios(opId){
+  const { data } = await sb.from('destinatarios').select('*').eq('operation_id', opId).order('created_at');
+  const items = data||[];
+  const isTrader = currentProfile?.role === 'trader';
+  if(isTrader) renderDestinatariosTrader(items, opId);
+  else renderDestinatariosPartner(items, opId);
+}
+
+function renderDestinatariosTrader(items, opId){
+  const el = document.getElementById('mt-destinatarios');
+  if(!el) return;
+  const totalValor = items.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
+  const enviados = items.filter(d=>d.status==='enviado').length;
+  const moeda = items[0]?.moeda||'USDT';
+  let html = '';
+
+  if(items.length){
+    const allDone = enviados === items.length;
+    html += `
+    <div class="dest-summary">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Total distribuído</div>
+        <div style="font-size:18px;font-weight:800;color:var(--gold)">${fv(totalValor)} ${moeda}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Progresso</div>
+        <div style="font-size:18px;font-weight:800;color:${allDone?'var(--green)':'var(--text)'}">${enviados}/${items.length} enviados</div>
+      </div>
+    </div>`;
+
+    items.forEach(d=>{
+      const sent = d.status==='enviado';
+      html += `
+      <div class="dest-card">
+        <div class="dest-header">
+          <span class="dest-nome">${d.nome||'—'}</span>
+          ${d.rede?`<span class="dest-rede">${d.rede}</span>`:''}
+          ${destStatusDot(d.status||'pendente')}
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;padding:4px 8px;font-size:11px;color:var(--red)" onclick="deleteDestinatario('${d.id}','${opId}')">🗑</button>
+        </div>
+        <div class="dest-info">
+          ${d.carteira?`<span><b>Carteira / PIX:</b> <span style="font-family:monospace;font-size:11px">${d.carteira}</span></span>`:''}
+          ${d.valor?`<span><b>Valor:</b> <strong style="color:var(--gold)">${fv(d.valor)} ${d.moeda||'USDT'}</strong></span>`:''}
+          ${d.documento?`<span><b>Doc:</b> ${d.documento}</span>`:''}
+          ${d.banco?`<span><b>Banco:</b> ${d.banco}</span>`:''}
+          ${d.swift_bic?`<span><b>SWIFT:</b> ${d.swift_bic}</span>`:''}
+          ${d.iban_conta?`<span><b>IBAN/Conta:</b> ${d.iban_conta}</span>`:''}
+          ${d.agencia?`<span><b>Agência:</b> ${d.agencia}</span>`:''}
+          ${d.notes?`<span style="grid-column:1/-1;color:var(--muted)"><b>Obs:</b> ${d.notes}</span>`:''}
+        </div>
+        ${sent
+          ? `<div style="font-size:11px;color:var(--green);font-weight:600">✓ Enviado${d.tx_hash?' · TX: <span style="font-family:monospace">'+d.tx_hash+'</span>':''}</div>`
+          : `<div class="dest-actions">
+              <input type="text" id="tx-${d.id}" value="${d.tx_hash||''}" placeholder="TX Hash / comprovante (opcional)" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:monospace"/>
+              <button class="btn btn-green btn-sm" onclick="marcarEnviado('${d.id}','${opId}')">✓ Enviado</button>
+              <button class="btn btn-red btn-sm" style="opacity:.7" onclick="marcarFalhou('${d.id}','${opId}')">✕ Falhou</button>
+            </div>`
+        }
+      </div>`;
+    });
+  } else {
+    html += `<div class="alert alert-blue" style="margin-bottom:14px">ℹ️ Nenhum destinatário cadastrado para esta operação. O parceiro pode adicionar ou você pode incluir diretamente aqui.</div>`;
+  }
+
+  html += buildDestForm(opId);
+  el.innerHTML = html;
+}
+
+function renderDestinatariosPartner(items, opId){
+  const el = document.getElementById('pt-dest');
+  if(!el) return;
+  const totalValor = items.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
+  const moeda = items[0]?.moeda||'USDT';
+  let html = '';
+
+  if(items.length){
+    html += `
+    <div class="dest-summary">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">${items.length} destinatário${items.length>1?'s':''}</div>
+        <div style="font-size:16px;font-weight:800;color:var(--gold)">${fv(totalValor)} ${moeda}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Enviados</div>
+        <div style="font-size:16px;font-weight:800">${items.filter(d=>d.status==='enviado').length}/${items.length}</div>
+      </div>
+    </div>`;
+
+    items.forEach(d=>{
+      html += `
+      <div class="dest-card">
+        <div class="dest-header">
+          <span class="dest-nome">${d.nome||'—'}</span>
+          ${d.rede?`<span class="dest-rede">${d.rede}</span>`:''}
+          ${destStatusDot(d.status||'pendente')}
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;padding:4px 8px;font-size:11px;color:var(--red)" onclick="deleteDestinatario('${d.id}','${opId}')">🗑</button>
+        </div>
+        <div class="dest-info">
+          ${d.carteira?`<span><b>Carteira / PIX:</b> <span style="font-family:monospace;font-size:11px">${d.carteira}</span></span>`:''}
+          ${d.valor?`<span><b>Valor:</b> <strong style="color:var(--gold)">${fv(d.valor)} ${d.moeda||'USDT'}</strong></span>`:''}
+          ${d.banco?`<span><b>Banco:</b> ${d.banco}</span>`:''}
+          ${d.tx_hash&&d.status==='enviado'?`<span style="grid-column:1/-1;color:var(--green);font-family:monospace;font-size:11px"><b>TX:</b> ${d.tx_hash}</span>`:''}
+        </div>
+      </div>`;
+    });
+  } else {
+    html += `<div class="alert alert-gold" style="margin-bottom:14px">📋 Adicione os destinatários desta liquidação. A mesa OTC usará esses dados para executar os envios em USDT.</div>`;
+  }
+
+  html += buildDestForm(opId);
+  el.innerHTML = html;
+}
+
+async function addDestinatario(opId){
+  const nome  = document.getElementById('nd-nome')?.value.trim();
+  const valor = document.getElementById('nd-valor')?.value;
+  if(!nome||!valor){ toast('Nome e valor são obrigatórios.','warn'); return; }
+  const { error } = await sb.from('destinatarios').insert({
+    operation_id: opId,
+    nome,
+    documento:  document.getElementById('nd-doc')?.value.trim()||null,
+    moeda:      document.getElementById('nd-moeda')?.value||'USDT',
+    valor:      parseFloat(valor),
+    rede:       document.getElementById('nd-rede')?.value||null,
+    carteira:   document.getElementById('nd-carteira')?.value.trim()||null,
+    banco:      document.getElementById('nd-banco')?.value.trim()||null,
+    swift_bic:  document.getElementById('nd-swift')?.value.trim()||null,
+    iban_conta: document.getElementById('nd-iban')?.value.trim()||null,
+    agencia:    document.getElementById('nd-agencia')?.value.trim()||null,
+    notes:      document.getElementById('nd-notes')?.value.trim()||null,
+  });
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('✅ Destinatário adicionado!');
+  await loadDestinatarios(opId);
+}
+
+async function marcarEnviado(destId, opId){
+  const txHash = document.getElementById(`tx-${destId}`)?.value.trim()||null;
+  const { error } = await sb.from('destinatarios')
+    .update({ status:'enviado', tx_hash: txHash, updated_at: new Date().toISOString() })
+    .eq('id', destId);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('✅ Marcado como enviado!');
+  await loadDestinatarios(opId);
+}
+
+async function marcarFalhou(destId, opId){
+  const { error } = await sb.from('destinatarios')
+    .update({ status:'falhou', updated_at: new Date().toISOString() })
+    .eq('id', destId);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('Marcado como falhou','warn');
+  await loadDestinatarios(opId);
+}
+
+async function deleteDestinatario(destId, opId){
+  const { error } = await sb.from('destinatarios').delete().eq('id', destId);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('Removido');
+  await loadDestinatarios(opId);
 }
 
 // ══════════════════════════════════════════
