@@ -413,6 +413,13 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       </div>
 
       <div class="section-label">Remetente (KYC)</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Cliente cadastrado</label>
+        <select id="n-rem-cliente" onchange="selectRemetente(this.value)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-size:13px;outline:none">
+          <option value="">✚ Preencher novo remetente</option>
+        </select>
+      </div>
+      <div id="n-rem-bank-confirm" style="display:none"></div>
       <div class="form-grid">
         <div class="field"><label>Nome completo *</label><input type="text" id="n-remetente" placeholder="Nome / Razão social"/></div>
         <div class="field"><label>País</label><input type="text" id="n-pais-remetente" placeholder="Brasil"/></div>
@@ -434,6 +441,13 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       </div>
 
       <div class="section-label">Beneficiário (KYB)</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Cliente cadastrado</label>
+        <select id="n-ben-cliente" onchange="selectBeneficiario(this.value)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-size:13px;outline:none">
+          <option value="">✚ Preencher novo beneficiário</option>
+        </select>
+      </div>
+      <div id="n-ben-bank-confirm" style="display:none"></div>
       <div class="form-grid">
         <div class="field"><label>Nome legal *</label><input type="text" id="n-beneficiario" placeholder="Empresa XYZ Inc"/></div>
         <div class="field"><label>Ramo de atividade *</label><input type="text" id="n-ramo" placeholder="Tecnologia, Importação..."/></div>
@@ -455,6 +469,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       </div>
 
       <hr class="div"/>
+      <div class="doc-check-grid" style="margin-bottom:16px">
+        <label class="doc-check" id="lbl-save-rem"><input type="checkbox" id="n-save-rem" style="accent-color:var(--green)"> 💾 Salvar remetente como cliente</label>
+        <label class="doc-check" id="lbl-save-ben"><input type="checkbox" id="n-save-ben" style="accent-color:var(--green)"> 💾 Salvar beneficiário como cliente</label>
+      </div>
       <button class="btn btn-primary btn-full btn-lg" onclick="submitNewOp()">📤 Enviar solicitação</button>
     </div>
   </div>
@@ -526,6 +544,9 @@ let currentProfile = null;
 let allOps = [];
 let partnerNames = {};
 let activeStatusTab = '';
+let partnerClients = [];
+let selectedRemId = null;
+let selectedBenId = null;
 
 function fv(n){ return n ? Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; }
 function fd(s){ return s ? new Date(s).toLocaleDateString('pt-BR') : '—'; }
@@ -1397,14 +1418,21 @@ function gerarLinkCliente(opId){
 // ══════════════════════════════════════════
 // NOVA OPERAÇÃO (parceiro)
 // ══════════════════════════════════════════
-function openNewOp(){
+async function openNewOp(){
+  selectedRemId = null; selectedBenId = null;
   ['n-tipo','n-moeda-origem','n-valor','n-moeda-destino','n-pais-destino','n-sla-desejado',
    'n-proposito','n-invoice','n-remetente','n-pais-remetente','n-tipo-doc','n-num-doc',
    'n-status-kyc','n-end-remetente','n-beneficiario','n-ramo',
    'n-website','n-doc-registro','n-status-kyb','n-end-beneficiario']
   .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.querySelectorAll('.ndoc-rem,.ndoc-kyb').forEach(el=>el.checked=false);
+  document.querySelectorAll('#n-save-rem,#n-save-ben').forEach(el=>{ if(el) el.checked=false; });
+  const remBank = document.getElementById('n-rem-bank-confirm');
+  const benBank = document.getElementById('n-ben-bank-confirm');
+  if(remBank) remBank.style.display='none';
+  if(benBank) benBank.style.display='none';
   openModal('modal-new-op');
+  await loadPartnerClients();
 }
 
 async function submitNewOp(){
@@ -1414,6 +1442,30 @@ async function submitNewOp(){
   const proposito   = document.getElementById('n-proposito').value.trim();
   if(!valor||!remetente||!beneficiario||!proposito){
     toast('Preencha os campos obrigatórios: valor, remetente, beneficiário e propósito.','warn'); return;
+  }
+  // Salvar novos clientes se solicitado
+  let remId = selectedRemId;
+  let benId = selectedBenId;
+  if(!remId && document.getElementById('n-save-rem')?.checked){
+    remId = await saveAsClient('remetente', {
+      nome: remetente, pais: document.getElementById('n-pais-remetente').value.trim(),
+      tipo_doc: document.getElementById('n-tipo-doc').value,
+      num_doc: document.getElementById('n-num-doc').value.trim(),
+      status_kyc: document.getElementById('n-status-kyc').value,
+      end_completo: document.getElementById('n-end-remetente').value.trim(),
+      docs: [...document.querySelectorAll('.ndoc-rem:checked')].map(el=>el.value).join(' | ')
+    });
+  }
+  if(!benId && document.getElementById('n-save-ben')?.checked){
+    benId = await saveAsClient('beneficiario', {
+      nome: beneficiario, pais: document.getElementById('n-pais-destino').value.trim(),
+      ramo: document.getElementById('n-ramo').value.trim(),
+      website: document.getElementById('n-website').value.trim(),
+      doc_registro: document.getElementById('n-doc-registro').value.trim(),
+      status_kyb: document.getElementById('n-status-kyb').value,
+      end_completo: document.getElementById('n-end-beneficiario').value.trim(),
+      kyb_docs: [...document.querySelectorAll('.ndoc-kyb:checked')].map(el=>el.value).join(' | ')
+    });
   }
   const ano = new Date().getFullYear();
   const seq = String(Math.floor(Math.random()*9999)+1).padStart(4,'0');
@@ -1439,12 +1491,12 @@ async function submitNewOp(){
     status_kyb: document.getElementById('n-status-kyb').value,
     end_beneficiario: document.getElementById('n-end-beneficiario').value.trim(),
     kyb_docs: [...document.querySelectorAll('.ndoc-kyb:checked')].map(el=>el.value).join(' | '),
+    remetente_id: remId||null, beneficiario_id: benId||null,
   });
   if(error){ toast('Erro ao criar operação: '+error.message,'err'); return; }
   toast(`Operação ${opId} criada!`);
   closeModal('modal-new-op');
   await loadPartnerDashboard();
-  // Notifica trader sobre nova demanda
   const newOpData = {
     op_id: opId, id: null, partner_id: currentUser.id,
     valor: parseFloat(valor), moeda_origem: document.getElementById('n-moeda-origem').value,
@@ -1625,6 +1677,123 @@ function renderNotifications(notifs){
         <span class="${n.sent_email?'ns-ok':'ns-pend'}">${n.sent_email?'📧 E-mail':'📧 —'}</span>
       </div>
     </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+// CLIENTES CADASTRADOS
+// ══════════════════════════════════════════
+async function loadPartnerClients(){
+  if(currentProfile?.role !== 'partner') return;
+  const { data } = await sb.from('clients').select('*').order('nome');
+  partnerClients = data || [];
+
+  const remOpts = partnerClients
+    .filter(c => c.tipo !== 'beneficiario')
+    .map(c => `<option value="${c.id}">${c.nome}${c.num_doc?' — '+c.num_doc:''}</option>`)
+    .join('');
+  const benOpts = partnerClients
+    .filter(c => c.tipo !== 'remetente')
+    .map(c => `<option value="${c.id}">${c.nome}${c.doc_registro?' — '+c.doc_registro:''}</option>`)
+    .join('');
+
+  const remSel = document.getElementById('n-rem-cliente');
+  const benSel = document.getElementById('n-ben-cliente');
+  if(remSel) remSel.innerHTML = `<option value="">✚ Preencher novo remetente</option>${remOpts}`;
+  if(benSel) benSel.innerHTML = `<option value="">✚ Preencher novo beneficiário</option>${benOpts}`;
+}
+
+function buildBankConfirmHTML(tipo, c){
+  const hasBankData = c.banco||c.swift_bic||c.iban_conta||c.agencia||c.pix_chave;
+  if(!hasBankData) return '';
+  const parts = [
+    c.banco     ? `<span><b>Banco:</b> ${c.banco}</span>` : '',
+    c.swift_bic ? `<span><b>SWIFT/BIC:</b> ${c.swift_bic}</span>` : '',
+    c.iban_conta? `<span><b>IBAN/Conta:</b> ${c.iban_conta}</span>` : '',
+    c.agencia   ? `<span><b>Agência:</b> ${c.agencia}</span>` : '',
+    c.pix_chave ? `<span><b>PIX:</b> ${c.pix_chave}</span>` : '',
+  ].filter(Boolean).join('');
+  return `
+  <div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.25);border-radius:8px;padding:13px 16px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-light);margin-bottom:8px">🏦 Dados bancários registrados</div>
+    <div style="font-size:12px;display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;color:var(--text)">${parts}</div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="n-${tipo}-bank-ok" style="accent-color:var(--green)" checked/>
+      <span>Confirmo que os dados bancários são os mesmos</span>
+    </label>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Desmarque se os dados mudaram — a mesa OTC verificará na operação.</div>
+  </div>`;
+}
+
+function selectRemetente(clientId){
+  selectedRemId = clientId||null;
+  const c = partnerClients.find(x => x.id === clientId);
+  const bankDiv = document.getElementById('n-rem-bank-confirm');
+  const lblSave = document.getElementById('lbl-save-rem');
+  if(!c){
+    if(bankDiv) bankDiv.style.display = 'none';
+    if(lblSave) lblSave.style.display = 'inline-flex';
+    // Limpa campos
+    ['n-remetente','n-pais-remetente','n-num-doc','n-end-remetente'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    ['n-tipo-doc','n-status-kyc'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    return;
+  }
+  // Preenche campos com dados do cliente
+  const v = (id, val) => { const el=document.getElementById(id); if(el&&val) el.value=val; };
+  v('n-remetente', c.nome); v('n-pais-remetente', c.pais);
+  v('n-tipo-doc', c.tipo_doc); v('n-num-doc', c.num_doc);
+  v('n-status-kyc', c.status_kyc); v('n-end-remetente', c.end_completo);
+  // Oculta "salvar como cliente" (já é cliente)
+  if(lblSave) lblSave.style.display = 'none';
+  // Mostra confirmação de dados bancários (se existir)
+  if(bankDiv){
+    const html = buildBankConfirmHTML('rem', c);
+    if(html){ bankDiv.innerHTML = html; bankDiv.style.display = 'block'; }
+    else bankDiv.style.display = 'none';
+  }
+}
+
+function selectBeneficiario(clientId){
+  selectedBenId = clientId||null;
+  const c = partnerClients.find(x => x.id === clientId);
+  const bankDiv = document.getElementById('n-ben-bank-confirm');
+  const lblSave = document.getElementById('lbl-save-ben');
+  if(!c){
+    if(bankDiv) bankDiv.style.display = 'none';
+    if(lblSave) lblSave.style.display = 'inline-flex';
+    ['n-beneficiario','n-ramo','n-website','n-doc-registro','n-end-beneficiario'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    const kyb=document.getElementById('n-status-kyb'); if(kyb) kyb.value='';
+    return;
+  }
+  const v = (id, val) => { const el=document.getElementById(id); if(el&&val) el.value=val; };
+  v('n-beneficiario', c.nome); v('n-ramo', c.ramo); v('n-website', c.website);
+  v('n-doc-registro', c.doc_registro); v('n-status-kyb', c.status_kyb);
+  v('n-end-beneficiario', c.end_completo);
+  if(lblSave) lblSave.style.display = 'none';
+  if(bankDiv){
+    const html = buildBankConfirmHTML('ben', c);
+    if(html){ bankDiv.innerHTML = html; bankDiv.style.display = 'block'; }
+    else bankDiv.style.display = 'none';
+  }
+}
+
+async function saveAsClient(tipo, data){
+  const { data: saved, error } = await sb.from('clients').insert({
+    partner_id: currentUser.id, tipo,
+    nome: data.nome, pais: data.pais,
+    tipo_doc: data.tipo_doc, num_doc: data.num_doc,
+    status_kyc: data.status_kyc, end_completo: data.end_completo, docs: data.docs,
+    ramo: data.ramo, website: data.website, doc_registro: data.doc_registro,
+    status_kyb: data.status_kyb, kyb_docs: data.kyb_docs,
+  }).select('id').single();
+  if(error){ toast('Erro ao salvar cliente: '+error.message,'err'); return null; }
+  toast(`✅ Cliente "${data.nome}" salvo!`);
+  return saved?.id;
 }
 
 // ══════════════════════════════════════════
