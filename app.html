@@ -422,7 +422,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       <h1 id="partner-greeting">Olá</h1>
       <p class="sub" style="margin-bottom:0">Painel de operações OTC</p>
     </div>
-    <button class="btn btn-primary" onclick="openNewOp()">+ Nova solicitação</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="openQuickOp()">⚡ Op. Rápida</button>
+      <button class="btn btn-primary" onclick="openNewOp()">+ Nova solicitação</button>
+    </div>
   </div>
 
   <!-- Mini-dash stats -->
@@ -659,6 +662,134 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       <div class="field" style="margin-top:10px"><label>Observação para o parceiro</label><textarea id="set-obs" placeholder="Ex: Identificar a TED/PIX com o número da operação OTC-XXXX" style="min-height:60px"></textarea></div>
       <hr class="div"/>
       <button class="btn btn-green btn-full btn-lg" onclick="saveContaRecebimento()">💾 Salvar conta de recebimento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: OPERAÇÃO RÁPIDA ═══════════════ -->
+<div class="modal-backdrop" id="modal-quick-op">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">⚡ Operação Rápida</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Para clientes já cadastrados — KYC/KYB aprovado</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-quick-op')">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Remetente -->
+      <div class="section-label">Cliente remetente</div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Cliente cadastrado *</label>
+        <select id="qo-cliente" onchange="selectQuickCliente(this.value)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-size:13px;outline:none">
+          <option value="">— Selecionar cliente —</option>
+        </select>
+      </div>
+      <div id="qo-cliente-info" style="display:none;background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:12px;color:var(--text)"></div>
+
+      <!-- Operação -->
+      <div class="section-label">Operação</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Valor recebido *</label>
+          <input type="number" id="qo-valor" placeholder="50000" step="0.01" oninput="calcQuickOp()"/>
+        </div>
+        <div class="field">
+          <label>Moeda</label>
+          <select id="qo-moeda" onchange="calcQuickOp()">
+            <option>USDT</option><option>USDC</option><option>USD</option><option>EUR</option><option>BTC</option><option>BRL</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Rede / Método</label>
+          <select id="qo-rede">
+            <option>Ethereum (ERC-20)</option>
+            <option>Tron (TRC-20)</option>
+            <option>BNB Smart Chain</option>
+            <option>Solana</option>
+            <option>Polygon</option>
+            <option>PIX</option>
+            <option>SWIFT / Wire</option>
+            <option>Transferência bancária</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Taxa de câmbio (BRL / unidade) *</label>
+          <input type="number" id="qo-taxa" placeholder="5.0099" step="0.0001" oninput="calcQuickOp()"/>
+        </div>
+        <div class="field">
+          <label>Fee % *</label>
+          <input type="number" id="qo-fee" placeholder="0.6" step="0.01" oninput="calcQuickOp()"/>
+        </div>
+        <div class="field">
+          <label>Tipo de operação</label>
+          <select id="qo-tipo">
+            <option>OTC FX Spot</option>
+            <option>Câmbio Internacional</option>
+            <option>Stablecoin → BRL</option>
+            <option>BRL → Stablecoin</option>
+            <option>Remessa Internacional</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Preview ao vivo -->
+      <div id="qo-preview" style="display:none;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.22);border-radius:10px;padding:14px 16px;margin:14px 0 2px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--green);margin-bottom:10px">📊 Cálculo em tempo real</div>
+        <div id="qo-preview-body" style="font-family:'Courier New',monospace;font-size:12.5px;line-height:2;color:var(--text)"></div>
+      </div>
+
+      <!-- Beneficiário -->
+      <div class="section-label">Beneficiário — recebe o líquido</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field">
+          <label>Nome do beneficiário *</label>
+          <input type="text" id="qo-ben-nome" placeholder="Tauri Curitiba S.A." oninput="calcQuickOp()"/>
+        </div>
+        <div class="field">
+          <label>Destino (PIX / Carteira / IBAN)</label>
+          <input type="text" id="qo-ben-destino" placeholder="52.531.291/0001-48 ou 0xABCD..."/>
+        </div>
+      </div>
+
+      <!-- Fee destino -->
+      <div class="section-label">Destinatário do fee</div>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field">
+          <label>Nome do recebedor *</label>
+          <input type="text" id="qo-fee-nome" placeholder="BS Bank" value="BS Bank" oninput="calcQuickOp()"/>
+        </div>
+        <div class="field">
+          <label>CNPJ / Documento</label>
+          <input type="text" id="qo-fee-doc" placeholder="CNPJ ou Tax ID"/>
+        </div>
+        <div class="field">
+          <label>Destino (PIX / Carteira / Conta)</label>
+          <input type="text" id="qo-fee-destino" placeholder="Chave PIX, carteira ou conta"/>
+        </div>
+        <div class="field">
+          <label>Rede / Método</label>
+          <select id="qo-fee-rede">
+            <option>PIX</option>
+            <option>Ethereum (ERC-20)</option>
+            <option>Tron (TRC-20)</option>
+            <option>SWIFT / Wire</option>
+            <option>Transferência bancária</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Propósito -->
+      <div class="field" style="margin-bottom:16px">
+        <label>Propósito / referência</label>
+        <input type="text" id="qo-proposito" placeholder="Ex: Câmbio OTC — Invoice INV-2025-001"/>
+      </div>
+
+      <hr class="div"/>
+      <button class="btn btn-green btn-full btn-lg" onclick="submitQuickOp()">⚡ Registrar operação e gerar resumo</button>
     </div>
   </div>
 </div>
@@ -2358,6 +2489,244 @@ async function saveContaRecebimento(){
   closeModal('modal-settings');
   // Recarrega o card do parceiro se estiver visível
   await loadContaRecebimento();
+}
+
+// ══════════════════════════════════════════
+// OPERAÇÃO RÁPIDA
+// ══════════════════════════════════════════
+let quickOpCliente = null;
+
+async function openQuickOp(){
+  quickOpCliente = null;
+
+  // Reseta todos os campos
+  ['qo-valor','qo-taxa','qo-fee','qo-ben-nome','qo-ben-destino','qo-fee-doc','qo-fee-destino','qo-proposito'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  const feeNomeEl = document.getElementById('qo-fee-nome');
+  if(feeNomeEl) feeNomeEl.value = 'BS Bank';
+
+  const clienteInfoEl = document.getElementById('qo-cliente-info');
+  const previewEl     = document.getElementById('qo-preview');
+  if(clienteInfoEl) clienteInfoEl.style.display = 'none';
+  if(previewEl)     previewEl.style.display     = 'none';
+
+  // Carrega clientes registrados
+  const { data } = await sb.from('clients').select('*').order('nome');
+  partnerClients = data || [];
+
+  const sel = document.getElementById('qo-cliente');
+  if(sel){
+    sel.innerHTML = `<option value="">— Selecionar cliente —</option>` +
+      partnerClients.map(c =>
+        `<option value="${c.id}">${c.nome}${c.num_doc ? ' — ' + c.num_doc : c.doc_registro ? ' — ' + c.doc_registro : ''}</option>`
+      ).join('');
+  }
+  openModal('modal-quick-op');
+}
+
+function selectQuickCliente(id){
+  quickOpCliente = partnerClients.find(c => c.id === id) || null;
+  const info = document.getElementById('qo-cliente-info');
+  if(!quickOpCliente){ if(info) info.style.display = 'none'; return; }
+
+  const c = quickOpCliente;
+  const kycLabel = c.status_kyc === 'Aprovado'
+    ? `<span style="color:var(--green);font-weight:700">✓ KYC Aprovado</span>`
+    : c.status_kyb === 'Aprovado'
+      ? `<span style="color:var(--green);font-weight:700">✓ KYB Aprovado</span>`
+      : c.status_kyc || c.status_kyb
+        ? `<span style="color:var(--gold)">⚠️ ${c.status_kyc || c.status_kyb}</span>`
+        : '';
+
+  const parts = [
+    `<strong>${c.nome}</strong>`,
+    c.num_doc ? `Doc: ${c.num_doc}` : c.doc_registro ? `Reg: ${c.doc_registro}` : '',
+    kycLabel,
+    c.pais || '',
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+
+  if(info){ info.innerHTML = `👤 ${parts}`; info.style.display = 'block'; }
+
+  // Pré-preenche beneficiário
+  const benNome = document.getElementById('qo-ben-nome');
+  if(benNome && !benNome.value) benNome.value = c.nome;
+
+  // Pré-preenche destino com dados bancários do cliente
+  const benDest = document.getElementById('qo-ben-destino');
+  if(benDest && !benDest.value){
+    if(c.pix_chave)  benDest.value = c.pix_chave;
+    else if(c.iban_conta) benDest.value = c.iban_conta;
+  }
+
+  calcQuickOp();
+}
+
+function calcQuickOp(){
+  const valor  = parseFloat(document.getElementById('qo-valor')?.value) || 0;
+  const taxa   = parseFloat(document.getElementById('qo-taxa')?.value)  || 0;
+  const feePct = parseFloat(document.getElementById('qo-fee')?.value)   || 0;
+  const moeda  = document.getElementById('qo-moeda')?.value || 'USDT';
+  const prev   = document.getElementById('qo-preview');
+  const body   = document.getElementById('qo-preview-body');
+
+  if(!valor || !taxa){ if(prev) prev.style.display = 'none'; return; }
+
+  const feeAmt  = valor * feePct / 100;
+  const liquido = valor - feeAmt;
+  const feeBRL  = feeAmt * taxa;
+  const liqBRL  = liquido * taxa;
+  const totalBRL= feeBRL + liqBRL;
+
+  const fmt2 = n => Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtBRL = n => `R$ ${fmt2(n)}`;
+  const feeNome = document.getElementById('qo-fee-nome')?.value || 'Fee';
+  const benNome = document.getElementById('qo-ben-nome')?.value || 'Beneficiário';
+
+  if(body) body.innerHTML = `
+    <div style="color:var(--gold);font-weight:700">${fmt2(valor)} ${moeda}</div>
+    <div style="margin-left:6px;color:var(--muted)">├─ Fee <strong>${feePct}%</strong> → <span style="color:var(--text)">${fmt2(feeAmt)} ${moeda}</span> → <em>${feeNome}</em> → <span style="color:var(--accent-light)">${fmtBRL(feeBRL)}</span></div>
+    <div style="margin-left:6px;color:var(--muted)">└─ Líquido → <span style="color:var(--green);font-weight:700">${fmt2(liquido)} ${moeda}</span> → <em>${benNome}</em> → <span style="color:var(--green);font-weight:700">${fmtBRL(liqBRL)}</span></div>
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-weight:800">💰 Total BRL: <span style="color:var(--green)">${fmtBRL(totalBRL)}</span></div>`;
+
+  if(prev) prev.style.display = 'block';
+}
+
+async function submitQuickOp(){
+  const valor     = parseFloat(document.getElementById('qo-valor')?.value);
+  const taxa      = parseFloat(document.getElementById('qo-taxa')?.value);
+  const feePct    = parseFloat(document.getElementById('qo-fee')?.value) || 0;
+  const moeda     = document.getElementById('qo-moeda')?.value     || 'USDT';
+  const rede      = document.getElementById('qo-rede')?.value      || '';
+  const tipo      = document.getElementById('qo-tipo')?.value      || 'OTC FX Spot';
+  const benNome   = document.getElementById('qo-ben-nome')?.value.trim();
+  const benDest   = document.getElementById('qo-ben-destino')?.value.trim();
+  const feeNome   = document.getElementById('qo-fee-nome')?.value.trim()  || 'Fee';
+  const feeDoc    = document.getElementById('qo-fee-doc')?.value.trim()   || '';
+  const feeDest   = document.getElementById('qo-fee-destino')?.value.trim()|| '';
+  const feeRede   = document.getElementById('qo-fee-rede')?.value         || '';
+  const proposito = document.getElementById('qo-proposito')?.value.trim() || 'Câmbio OTC';
+  const clienteId = document.getElementById('qo-cliente')?.value;
+
+  // Validações
+  if(!clienteId)       { toast('Selecione o cliente remetente.','warn'); return; }
+  if(!valor||isNaN(valor)){ toast('Informe o valor recebido.','warn'); return; }
+  if(!taxa||isNaN(taxa))  { toast('Informe a taxa de câmbio.','warn'); return; }
+  if(!benNome)            { toast('Informe o nome do beneficiário.','warn'); return; }
+
+  const remetente = quickOpCliente?.nome || '—';
+  const feeAmt    = valor * feePct / 100;
+  const liquido   = valor - feeAmt;
+  const feeBRL    = feeAmt * taxa;
+  const liqBRL    = liquido * taxa;
+  const totalBRL  = feeBRL + liqBRL;
+
+  // Gera ID da operação
+  const ano  = new Date().getFullYear();
+  const seq  = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+  const opId = `OTC-${ano}-${seq}`;
+
+  // Cria operação
+  const { data: opData, error: opError } = await sb.from('operations').insert({
+    op_id: opId,
+    partner_id: currentUser.id,
+    status: 'Em execução',
+    tipo,
+    moeda_origem:  moeda,
+    moeda_destino: 'BRL',
+    valor,
+    remetente,
+    remetente_id:  clienteId || null,
+    beneficiario:  benNome,
+    taxa_base:     taxa,
+    taxa_final:    taxa,
+    valor_destino_base:  liqBRL,
+    valor_destino_final: liqBRL,
+    proposito,
+    pais_destino:  'Brasil',
+    status_kyc:    quickOpCliente?.status_kyc || null,
+    status_kyb:    quickOpCliente?.status_kyb || null,
+    updated_at:    new Date().toISOString(),
+  }).select('id').single();
+
+  if(opError){ toast('Erro ao criar operação: ' + opError.message, 'err'); return; }
+
+  const dbOpId = opData.id;
+
+  // Cria destinatários em paralelo
+  const destInserts = [];
+
+  // Beneficiário (recebe líquido)
+  destInserts.push(sb.from('destinatarios').insert({
+    operation_id: dbOpId,
+    nome:      benNome,
+    moeda,
+    valor:     liquido,
+    rede:      rede || null,
+    carteira:  benDest || null,
+    notes:     `Líquido após fee de ${feePct}%`,
+  }));
+
+  // Fee
+  if(feePct > 0){
+    destInserts.push(sb.from('destinatarios').insert({
+      operation_id: dbOpId,
+      nome:      feeNome,
+      documento: feeDoc  || null,
+      moeda,
+      valor:     feeAmt,
+      rede:      feeRede || null,
+      carteira:  feeDest || null,
+      notes:     `Fee ${feePct}% da operação`,
+    }));
+  }
+
+  const results = await Promise.all(destInserts);
+  const destError = results.find(r => r.error);
+  if(destError){ toast('Operação criada, mas erro em destinatários: ' + destError.error.message, 'warn'); }
+
+  // Monta mensagem WhatsApp de liquidação
+  const fmt2 = n => Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtBRL = n => `R$ ${fmt2(n)}`;
+
+  let msg = `⚡ *Liquidação OTC — ${opId}*\n`;
+  msg += `📤 Remetente: ${remetente}\n\n`;
+  msg += `💱 *Operação:*\n`;
+  msg += `• ${fmt2(valor)} ${moeda}${rede ? ' (' + rede + ')' : ''}\n`;
+  msg += `• Taxa: 1 ${moeda} = R$ ${taxa.toFixed(4)}\n`;
+  msg += `• Fee: ${feePct}%\n\n`;
+  msg += `💸 *Distribuição:*\n`;
+  msg += `• ${fmt2(liquido)} ${moeda} → ${benNome}`;
+  if(benDest) msg += ` (${benDest})`;
+  msg += `\n  ↪ ${fmtBRL(liqBRL)}\n`;
+  if(feePct > 0){
+    msg += `• ${fmt2(feeAmt)} ${moeda} → ${feeNome}`;
+    if(feeDoc)  msg += ` — ${feeDoc}`;
+    if(feeDest) msg += ` (${feeDest})`;
+    msg += `\n  ↪ Fee (${feePct}%) — ${fmtBRL(feeBRL)}\n`;
+  }
+  msg += `\n💰 *Total BRL: ${fmtBRL(totalBRL)}*\n\n`;
+  msg += `📋 Propósito: ${proposito}\n`;
+  msg += `🔖 ID: ${opId}\n\n`;
+  msg += `*Mesa OTC — Mutual Pay*`;
+
+  closeModal('modal-quick-op');
+  toast(`✅ Operação ${opId} registrada!`);
+  await loadPartnerDashboard();
+
+  // Abre modal de notificação com resumo de liquidação
+  const subject = `Liquidação OTC — ${opId}`;
+  currentWAMessage = msg;
+  currentEmailText = msg;
+
+  document.getElementById('wa-notify-title').textContent  = '⚡ Resumo de liquidação';
+  document.getElementById('wa-notify-sub').textContent    = `${opId} · ${remetente} → ${benNome}`;
+  document.getElementById('wa-msg-preview').textContent   = msg;
+  document.getElementById('wa-send-btn').href             = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  document.getElementById('wa-email-subject').textContent = subject;
+  document.getElementById('wa-email-preview').textContent = msg;
+  document.getElementById('wa-mailto-btn').href           = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
+  openModal('modal-wa-notify');
 }
 
 // ══════════════════════════════════════════
