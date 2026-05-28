@@ -1508,42 +1508,57 @@ async function submitTraderQuote(opId){
   await notifyStatusChange(opSnap, 'Cotação enviada ao parceiro');
 }
 
-function gerarLinkCliente(opId){
+async function gerarLinkCliente(opId){
   const op = currentOp;
-  const spread   = parseFloat(document.getElementById('pq-spread')?.value)||0;
-  const taxaBase = parseFloat(op.taxa_base)||0;
+  const spread        = parseFloat(document.getElementById('pq-spread')?.value)||0;
+  const taxaBase      = parseFloat(op.taxa_base)||0;
   const valorDestBase = parseFloat(op.valor_destino_base)||0;
-  const taxaFinal  = parseFloat((taxaBase*(1-spread/100)).toFixed(4));
-  const valorFinal = parseFloat((valorDestBase*(1-spread/100)).toFixed(2));
-  const tarifaExtra = document.getElementById('pq-tarifa-extra')?.value.trim()||'';
-  const wp = (document.getElementById('pq-whatsapp')?.value||'').replace(/\D/g,'');
-  const obsCli = document.getElementById('pq-obs-cli')?.value.trim()||'';
+  const taxaFinal     = parseFloat((taxaBase*(1-spread/100)).toFixed(4));
+  const valorFinal    = parseFloat((valorDestBase*(1-spread/100)).toFixed(2));
+  const tarifaExtra   = document.getElementById('pq-tarifa-extra')?.value.trim()||'';
+  const wp            = (document.getElementById('pq-whatsapp')?.value||'').replace(/\D/g,'');
+  const obsCli        = document.getElementById('pq-obs-cli')?.value.trim()||'';
   if(!wp){ toast('Informe seu WhatsApp para o cliente poder responder.','warn'); return; }
-  const tarifasFinal = [op.tarifas_base, tarifaExtra].filter(Boolean).join(' + ')||'Incluídas';
+  const tarifasFinal  = [op.tarifas_base, tarifaExtra].filter(Boolean).join(' + ')||'Incluídas';
+
+  // Salva cotação final na operação
   sb.from('operations').update({
     spread, taxa_final: taxaFinal, valor_destino_final: valorFinal,
     tarifas_final: tarifasFinal, obs_cliente: obsCli,
     status: 'Aguardando aceite do cliente', updated_at: new Date().toISOString()
   }).eq('id', opId);
+
+  // Busca dados bancários e destinatários para incluir na confirmação do cliente
+  const [{ data: settingsData }, { data: destsData }] = await Promise.all([
+    sb.from('settings').select('value').eq('key','conta_recebimento').single(),
+    sb.from('destinatarios')
+      .select('nome,rede,carteira,banco,swift_bic,iban_conta,agencia,moeda,valor')
+      .eq('operation_id', opId)
+      .neq('status','falhou')
+  ]);
+
   const cl = {
     type:'quote', id:op.op_id, tipo:op.tipo,
-    empresa: currentProfile?.company||currentProfile?.name||'Parceiro',
-    remetente: op.remetente, beneficiario: op.beneficiario,
-    paisRemetente: op.pais_remetente, paisBeneficiario: op.pais_destino,
-    moedaOrigem: op.moeda_origem, valorOrigem: op.valor,
-    moedaDestino: op.moeda_destino, valorDestino: valorFinal.toString(),
-    taxa: taxaFinal.toString(), tarifas: tarifasFinal,
-    sla: op.sla, validade: op.validade, whatsapp: wp, obs: obsCli
+    empresa:        currentProfile?.company||currentProfile?.name||'Parceiro',
+    remetente:      op.remetente,      beneficiario:     op.beneficiario,
+    paisRemetente:  op.pais_remetente, paisBeneficiario: op.pais_destino,
+    moedaOrigem:    op.moeda_origem,   valorOrigem:      op.valor,
+    moedaDestino:   op.moeda_destino,  valorDestino:     valorFinal.toString(),
+    taxa:           taxaFinal.toString(), tarifas:        tarifasFinal,
+    sla:            op.sla, validade: op.validade, whatsapp: wp, obs: obsCli,
+    // Dados de pagamento — exibidos ao cliente na tela de confirmação
+    contaRecebimento: settingsData?.value || null,
+    destinatarios:    destsData || [],
   };
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(cl))));
-  const link = window.location.origin + '/index.html#q=' + encoded;
-  const boxEl  = document.getElementById(`cli-link-box-${opId}`);
-  const textEl = document.getElementById(`cli-link-text-${opId}`);
-  const waEl   = document.getElementById(`cli-wa-${opId}`);
-  if(boxEl) boxEl.classList.add('visible');
+  const link    = window.location.origin + '/index.html#q=' + encoded;
+  const boxEl   = document.getElementById(`cli-link-box-${opId}`);
+  const textEl  = document.getElementById(`cli-link-text-${opId}`);
+  const waEl    = document.getElementById(`cli-wa-${opId}`);
+  if(boxEl)  boxEl.classList.add('visible');
   if(textEl) textEl.textContent = link;
   const msg = `*Cotação para sua operação (${op.op_id})*\n\nOlá! Segue a cotação para revisão e aceite:\n\n${link}\n\n⏰ Válida até: ${fdh(op.validade)}`;
-  if(waEl) waEl.href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  if(waEl)   waEl.href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
   toast('Link gerado com sucesso!');
 }
 

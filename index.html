@@ -161,6 +161,16 @@
     /* DIVIDER */
     hr.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
+    /* BANKING CONFIRMATION */
+    .banking-confirm-alert { background: rgba(239,68,68,.08); border: 2px solid rgba(239,68,68,.4); border-radius: 10px; padding: 18px; }
+    .bc-title { font-size: 14px; font-weight: 800; color: var(--red); margin-bottom: 8px; }
+    .bc-body  { font-size: 13px; color: var(--text); line-height: 1.6; }
+    /* DESTINATION CARD */
+    .dest-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
+    .dest-card-name { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+    /* PIX / crypto highlight */
+    .pix-value { color: var(--green); font-family: 'Courier New', monospace; font-size: 14px; font-weight: 800; word-break: break-all; }
+
     /* VIEWS hidden by default */
     #view-intake, #view-trader, #view-pquote, #view-quote, #view-confirmation { display: none; }
   </style>
@@ -600,6 +610,20 @@
       </div>
 
       <hr class="divider" />
+
+      <!-- Conta de recebimento — aparece na confirmação do cliente -->
+      <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.22);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gold);margin-bottom:12px">🏦 Conta de recebimento — será exibida ao cliente na tela de confirmação</div>
+        <div class="form-grid">
+          <div class="field"><label>Titular</label><input type="text" id="pg-titular" placeholder="Empresa Ltda" /></div>
+          <div class="field"><label>CNPJ / CPF</label><input type="text" id="pg-cnpj" placeholder="00.000.000/0001-00" /></div>
+          <div class="field"><label>Banco</label><input type="text" id="pg-banco" placeholder="Banco do Brasil" /></div>
+          <div class="field"><label>Agência</label><input type="text" id="pg-agencia" placeholder="0001" /></div>
+          <div class="field"><label>Conta corrente</label><input type="text" id="pg-conta" placeholder="12345-6" /></div>
+          <div class="field"><label>Chave PIX</label><input type="text" id="pg-pix" placeholder="pix@empresa.com" /></div>
+        </div>
+      </div>
+
       <button class="btn btn-green btn-full btn-lg" onclick="gerarClienteLink()">
         🔗 Gerar link de cotação para o cliente
       </button>
@@ -650,8 +674,24 @@
       <div class="party-cell"><div class="detail-label">Beneficiário</div><div class="detail-value" id="q-beneficiario">—</div><div style="font-size:11px;color:var(--muted);margin-top:2px" id="q-pais-beneficiario"></div></div>
     </div>
     <div class="obs-block" id="q-obs-block" style="display:none"><strong style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.8px">Observações</strong><div id="q-obs" style="margin-top:5px"></div></div>
+
+    <!-- 🏦 Conta de recebimento — onde o cliente envia os recursos -->
+    <div id="q-conta-wrap" style="display:none;border-top:1px solid var(--border);padding:16px 20px 18px;background:rgba(245,158,11,.05)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:12px">🏦 Para onde enviar os recursos</div>
+      <div id="q-conta-body"></div>
+    </div>
+
+    <!-- 📤 Destinatários — contas/carteiras que receberão os recursos -->
+    <div id="q-destinos-wrap" style="display:none;border-top:1px solid var(--border);padding:16px 20px 18px;background:rgba(16,185,129,.04)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:12px">📤 Contas / carteiras que receberão os recursos</div>
+      <div id="q-destinos-body"></div>
+    </div>
+
     <div class="quote-actions">
-      <p class="disclaimer">Ao aceitar, você confirma ter lido e concordado com todas as condições desta cotação.<br/>A execução está sujeita à confirmação de fundos e lastro.</p>
+      <div class="banking-confirm-alert">
+        <div class="bc-title">⚠️ Verifique os dados bancários antes de aceitar</div>
+        <div class="bc-body">Confirme rigorosamente a conta de envio e as carteiras de destino exibidas acima. Ao aceitar, você declara ter validado todas as condições e dados de pagamento. <strong>Transferências para contas incorretas são irreversíveis.</strong></div>
+      </div>
       <div class="actions-row">
         <button class="btn btn-green btn-lg" onclick="responder('aceitar')">✅ Aceitar cotação</button>
         <button class="btn btn-red btn-lg" onclick="responder('recusar')">❌ Recusar / Renegociar</button>
@@ -664,13 +704,45 @@
      VIEW 5 — CONFIRMAÇÃO
 ════════════════════════════════════════════════════════ -->
 <div id="view-confirmation">
-  <div style="max-width:520px;margin:0 auto;padding:60px 20px;text-align:center">
-    <div class="confirm-icon" id="c-icon"></div>
-    <div class="confirm-title" id="c-title"></div>
-    <div class="confirm-sub" id="c-sub"></div>
-    <div class="confirm-id" id="c-id"></div>
-    <a id="c-wa-btn" class="btn btn-green btn-lg" href="#" target="_blank" style="display:inline-flex">💬 Confirmar pelo WhatsApp</a>
-    <p style="margin-top:14px;font-size:12px;color:var(--muted)">O botão abre o WhatsApp com mensagem pré-preenchida para confirmar sua decisão.</p>
+  <div class="card" style="max-width:760px;margin:0 auto;border-radius:0;border-left:none;border-right:none;min-height:60vh">
+
+    <!-- Cabeçalho -->
+    <div style="text-align:center;padding:40px 24px 24px;border-bottom:1px solid var(--border)">
+      <div id="c-icon" style="font-size:56px;margin-bottom:14px"></div>
+      <div id="c-title" style="font-size:24px;font-weight:700;margin-bottom:10px"></div>
+      <div id="c-id" style="font-family:'Courier New',monospace;font-size:13px;color:var(--accent-light);background:rgba(37,99,235,.1);padding:7px 18px;border-radius:8px;display:inline-block;margin-bottom:12px"></div>
+      <div id="c-sub" style="color:var(--muted);font-size:13px;line-height:1.6;max-width:540px;margin:0 auto"></div>
+    </div>
+
+    <!-- ALERTA BANCÁRIO (aparece só no aceite) -->
+    <div id="c-banking-alert" style="display:none;padding:20px 20px 0">
+      <div class="banking-confirm-alert">
+        <div class="bc-title">🔴 ATENÇÃO — Confirme os dados bancários antes de qualquer transferência</div>
+        <div class="bc-body">Verifique rigorosamente os dados abaixo antes de enviar qualquer valor. <strong>Transferências para contas incorretas são irreversíveis.</strong> Em caso de dúvida, entre em contato com seu parceiro antes de efetuar qualquer envio.</div>
+      </div>
+    </div>
+
+    <!-- Resumo da cotação -->
+    <div id="c-summary" style="padding:0 20px 8px"></div>
+
+    <!-- Conta de recebimento (onde o cliente envia) -->
+    <div id="c-conta-section" style="display:none;padding:0 20px 8px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:10px;padding-top:4px">🏦 Para onde enviar os recursos — confirme antes de transferir</div>
+      <div id="c-conta-body"></div>
+    </div>
+
+    <!-- Destinatários (contas/carteiras que receberão) -->
+    <div id="c-destinos-section" style="display:none;padding:0 20px 20px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:10px;padding-top:4px">📤 Contas / carteiras que receberão os recursos</div>
+      <div id="c-destinos-body"></div>
+    </div>
+
+    <!-- Botão WhatsApp -->
+    <div style="padding:20px;border-top:1px solid var(--border);text-align:center">
+      <a id="c-wa-btn" class="btn btn-green btn-lg" href="#" target="_blank" style="display:inline-flex">💬 Confirmar pelo WhatsApp</a>
+      <p style="margin-top:12px;font-size:11px;color:var(--muted)">O botão abre o WhatsApp com sua resposta pré-preenchida para confirmar ao parceiro.</p>
+    </div>
+
   </div>
 </div>
 
@@ -689,6 +761,44 @@ function statusClass(s) {
   if (s === 'Aprovado') return 'status-ok';
   if (s === 'Bloqueado' || s === 'Pendência documental') return 'status-bad';
   return 'status-warn';
+}
+
+// Gera grid de dados bancários (conta de recebimento)
+function buildContaGrid(c) {
+  if (!c) return '';
+  const rows = [];
+  if (c.titular) rows.push({ l: 'Titular', v: c.titular + (c.cnpj ? ' — CNPJ: ' + c.cnpj : ''), cls: '' });
+  if (c.banco)   rows.push({ l: 'Banco',   v: c.banco,   cls: '' });
+  if (c.agencia) rows.push({ l: 'Agência', v: c.agencia, cls: '' });
+  if (c.conta)   rows.push({ l: 'Conta (' + (c.tipo || 'CC') + ')', v: c.conta, cls: '' });
+  if (c.pix)     rows.push({ l: 'Chave PIX', v: c.pix, cls: 'pix-value' });
+  if (!rows.length) return '<div style="color:var(--muted);font-size:13px">—</div>';
+  return `<div class="info-grid">${rows.map(r =>
+    `<div class="info-cell"><div class="info-label">${r.l}</div><div class="info-value ${r.cls}">${r.v}</div></div>`
+  ).join('')}</div>`;
+}
+
+// Gera card de um destinatário (carteira/conta de saída)
+function buildDestinoCard(dest) {
+  const fields = [];
+  if (dest.rede)       fields.push({ l: 'Rede / Protocolo', v: dest.rede, mono: false });
+  if (dest.carteira)   fields.push({ l: 'Endereço / Carteira', v: dest.carteira, mono: true });
+  if (dest.banco)      fields.push({ l: 'Banco', v: dest.banco, mono: false });
+  if (dest.swift_bic)  fields.push({ l: 'SWIFT / BIC', v: dest.swift_bic, mono: false });
+  if (dest.iban_conta) fields.push({ l: 'IBAN / Conta', v: dest.iban_conta, mono: false });
+  if (dest.agencia)    fields.push({ l: 'Agência', v: dest.agencia, mono: false });
+  const valorTag = dest.valor
+    ? `<span style="color:var(--green);font-weight:700;font-size:13px">${fv(dest.valor)} ${dest.moeda || 'USDT'}</span>`
+    : '';
+  return `<div class="dest-card">
+    <div class="dest-card-name"><span>📤 ${dest.nome || 'Destinatário'}</span>${valorTag}</div>
+    ${fields.length ? `<div class="info-grid">${fields.map(f =>
+      `<div class="info-cell">
+         <div class="info-label">${f.l}</div>
+         <div class="info-value" style="${f.mono ? 'font-family:monospace;font-size:11px;word-break:break-all' : ''}">${f.v}</div>
+       </div>`
+    ).join('')}</div>` : ''}
+  </div>`;
 }
 
 // ══════════════════════════════════════════
@@ -954,7 +1064,17 @@ function gerarClienteLink() {
     sla:             pqData.sla,
     validade:        pqData.validade,
     whatsapp:        wpParceiro,
-    obs:             obsCli
+    obs:             obsCli,
+    // Dados bancários — mostrados ao cliente na confirmação
+    contaRecebimento: {
+      titular: (document.getElementById('pg-titular')?.value || '').trim(),
+      cnpj:    (document.getElementById('pg-cnpj')?.value || '').trim(),
+      banco:   (document.getElementById('pg-banco')?.value || '').trim(),
+      agencia: (document.getElementById('pg-agencia')?.value || '').trim(),
+      conta:   (document.getElementById('pg-conta')?.value || '').trim(),
+      pix:     (document.getElementById('pg-pix')?.value || '').trim(),
+    },
+    destinatarios: [],
   };
 
   const link = location.href.split('#')[0] + '#q=' + enc(cl);
@@ -995,6 +1115,19 @@ function carregarClienteView(encoded) {
     document.getElementById('q-obs').textContent = d.obs;
   }
   iniciarContador(d.validade);
+
+  // Conta de recebimento (onde o cliente envia os recursos)
+  if (d.contaRecebimento && (d.contaRecebimento.pix || d.contaRecebimento.banco || d.contaRecebimento.titular)) {
+    const wrap = document.getElementById('q-conta-wrap');
+    const body = document.getElementById('q-conta-body');
+    if (wrap && body) { wrap.style.display = 'block'; body.innerHTML = buildContaGrid(d.contaRecebimento); }
+  }
+  // Destinatários (carteiras/contas que receberão os recursos)
+  if (d.destinatarios && d.destinatarios.length > 0) {
+    const wrap = document.getElementById('q-destinos-wrap');
+    const body = document.getElementById('q-destinos-body');
+    if (wrap && body) { wrap.style.display = 'block'; body.innerHTML = d.destinatarios.map(buildDestinoCard).join(''); }
+  }
 }
 
 function iniciarContador(validadeStr) {
@@ -1019,16 +1152,42 @@ function responder(acao) {
   if (!qData) return;
   const d = qData;
   const agora = new Date().toLocaleString('pt-BR');
+  const hasConta = d.contaRecebimento && (d.contaRecebimento.pix || d.contaRecebimento.banco || d.contaRecebimento.titular);
+  const hasDests = d.destinatarios && d.destinatarios.length > 0;
   let msg, titulo, sub, icon;
 
   if (acao === 'aceitar') {
-    icon = '✅'; titulo = 'Cotação aceita!';
-    sub = `Seu aceite foi registrado em ${agora}.\nEntraremos em contato para confirmar os fundos e iniciar a execução.`;
-    msg = `✅ *ACEITE — ${d.id}*\n\nOlá, confirmo o aceite da cotação:\n\n*Operação:* ${d.id}\n*Valor:* ${fv(d.valorOrigem)} ${d.moedaOrigem} → ${fv(d.valorDestino)} ${d.moedaDestino}\n*Taxa:* 1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}\n*Aceito em:* ${agora}\n\nAguardo orientações para confirmação de fundos.`;
+    icon = '✅';
+    titulo = 'Cotação aceita com sucesso!';
+    sub = `Aceite registrado em ${agora}. Confirme os dados de pagamento abaixo antes de realizar qualquer transferência.`;
+
+    // Monta parte bancária da mensagem WhatsApp
+    let bankPart = '';
+    if (hasConta) {
+      const c = d.contaRecebimento;
+      bankPart += '\n\n📋 *Dados para envio dos recursos:*';
+      if (c.titular) bankPart += `\nTitular: ${c.titular}${c.cnpj ? ' — CNPJ: ' + c.cnpj : ''}`;
+      if (c.banco)   bankPart += `\nBanco: ${c.banco}`;
+      if (c.agencia) bankPart += ` | Agência: ${c.agencia}`;
+      if (c.conta)   bankPart += ` | Conta: ${c.conta}`;
+      if (c.pix)     bankPart += `\n🔑 PIX: ${c.pix}`;
+    }
+    if (hasDests) {
+      bankPart += '\n\n📤 *Contas / carteiras de destino:*';
+      d.destinatarios.forEach(dest => {
+        bankPart += `\n• ${dest.nome || 'Destinatário'}`;
+        if (dest.rede)     bankPart += ` (${dest.rede})`;
+        if (dest.valor)    bankPart += ` — ${fv(dest.valor)} ${dest.moeda || 'USDT'}`;
+        if (dest.carteira) bankPart += `\n  Carteira: ${dest.carteira}`;
+      });
+    }
+
+    msg = `✅ *ACEITE — ${d.id}*\n\nConfirmo o aceite da cotação:\n\n*Operação:* ${d.id}\n*Tipo:* ${d.tipo || '—'}\n*Remetente:* ${d.remetente} → *Beneficiário:* ${d.beneficiario}\n\n*💱 Câmbio:*\nEnvio: ${fv(d.valorOrigem)} ${d.moedaOrigem}\nRecebimento: ${fv(d.valorDestino)} ${d.moedaDestino}\nTaxa: 1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}\nTarifas: ${d.tarifas}\nSLA: ${d.sla}\n\n*Aceito em:* ${agora}${bankPart}\n\n✅ Confirmo ter verificado todos os dados bancários e de pagamento. Aguardo orientações para confirmação de fundos e início da execução.`;
   } else {
-    icon = '❌'; titulo = 'Recusa registrada';
-    sub = `Sua recusa foi registrada em ${agora}.\nEntraremos em contato para discutir novas condições.`;
-    msg = `❌ *RECUSA — ${d.id}*\n\nNão aceito as condições atuais da cotação:\n\n*Operação:* ${d.id}\n*Taxa recusada:* 1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}\n*Registrado em:* ${agora}\n\nGostaria de renegociar. Favor retornar com nova proposta.`;
+    icon = '❌';
+    titulo = 'Recusa registrada';
+    sub = `Recusa registrada em ${agora}. Entraremos em contato para discutir novas condições.`;
+    msg = `❌ *RECUSA — ${d.id}*\n\nNão aceito as condições atuais da cotação:\n\n*Operação:* ${d.id}\n*Valor:* ${fv(d.valorOrigem)} ${d.moedaOrigem} → ${fv(d.valorDestino)} ${d.moedaDestino}\n*Taxa recusada:* 1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}\n*Registrado em:* ${agora}\n\nGostaria de renegociar as condições. Favor retornar com nova proposta.`;
   }
 
   showOnly('view-confirmation');
@@ -1036,6 +1195,43 @@ function responder(acao) {
   document.getElementById('c-title').textContent = titulo;
   document.getElementById('c-sub').textContent = sub;
   document.getElementById('c-id').textContent = d.id;
+
+  // Resumo completo da cotação
+  const summary = document.getElementById('c-summary');
+  if (summary) {
+    summary.innerHTML = `
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding-top:20px;margin-bottom:10px">Resumo da cotação</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Operação</div><div class="info-value">${d.id}</div></div>
+        <div class="info-cell"><div class="info-label">Tipo</div><div class="info-value">${d.tipo || '—'}</div></div>
+        <div class="info-cell"><div class="info-label">Remetente</div><div class="info-value">${d.remetente || '—'}</div></div>
+        <div class="info-cell"><div class="info-label">Beneficiário</div><div class="info-value">${d.beneficiario || '—'}</div></div>
+        <div class="info-cell"><div class="info-label">Você envia</div><div class="info-value" style="font-size:17px;font-weight:800">${fv(d.valorOrigem)} ${d.moedaOrigem}</div></div>
+        <div class="info-cell"><div class="info-label">Você recebe</div><div class="info-value" style="font-size:17px;font-weight:800;color:var(--green)">${fv(d.valorDestino)} ${d.moedaDestino}</div></div>
+        <div class="info-cell"><div class="info-label">Taxa de câmbio</div><div class="info-value">1 ${d.moedaOrigem} = ${d.taxa} ${d.moedaDestino}</div></div>
+        <div class="info-cell"><div class="info-label">Tarifas</div><div class="info-value">${d.tarifas || 'Incluídas'}</div></div>
+        <div class="info-cell"><div class="info-label">SLA / Prazo</div><div class="info-value">${d.sla || '—'}</div></div>
+        <div class="info-cell"><div class="info-label">Válida até</div><div class="info-value">${fdh(d.validade)}</div></div>
+      </div>`;
+  }
+
+  // Dados bancários — apenas no aceite
+  if (acao === 'aceitar') {
+    const bankAlert = document.getElementById('c-banking-alert');
+    if (bankAlert) bankAlert.style.display = 'block';
+
+    if (hasConta) {
+      const sec  = document.getElementById('c-conta-section');
+      const body = document.getElementById('c-conta-body');
+      if (sec && body) { sec.style.display = 'block'; body.innerHTML = buildContaGrid(d.contaRecebimento); }
+    }
+    if (hasDests) {
+      const sec  = document.getElementById('c-destinos-section');
+      const body = document.getElementById('c-destinos-body');
+      if (sec && body) { sec.style.display = 'block'; body.innerHTML = d.destinatarios.map(buildDestinoCard).join(''); }
+    }
+  }
+
   document.getElementById('c-wa-btn').href = `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(msg)}`;
 }
 
