@@ -281,6 +281,27 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
     </div>
     <button class="btn btn-primary btn-full btn-lg" onclick="doLogin()">Entrar</button>
     <div id="login-error" style="margin-top:12px;font-size:12px;color:var(--red);display:none"></div>
+    <div style="margin-top:16px;text-align:center">
+      <button onclick="mostrarResetSenha()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline">Esqueci minha senha</button>
+    </div>
+    <!-- Formulário de reset (oculto por padrão) -->
+    <div id="reset-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Digite seu e-mail para receber o link de redefinição:</div>
+      <div class="field" style="margin-bottom:10px">
+        <input type="email" id="reset-email" placeholder="seu@email.com" />
+      </div>
+      <button class="btn btn-primary btn-full" onclick="enviarResetSenha()">Enviar link de redefinição</button>
+      <div id="reset-msg" style="margin-top:10px;font-size:12px;display:none"></div>
+    </div>
+    <!-- Formulário de nova senha (quando volta do link de reset) -->
+    <div id="nova-senha-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">🔑 Defina sua nova senha</div>
+      <div class="field" style="margin-bottom:10px">
+        <input type="password" id="nova-senha" placeholder="Nova senha" />
+      </div>
+      <button class="btn btn-green btn-full" onclick="salvarNovaSenha()">Salvar nova senha</button>
+      <div id="nova-senha-msg" style="margin-top:10px;font-size:12px;display:none"></div>
+    </div>
   </div>
 </div>
 
@@ -716,6 +737,39 @@ async function doLogin(){
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if(error){ errEl.textContent = 'E-mail ou senha incorretos.'; errEl.style.display='block'; return; }
   await initSession(data.user);
+}
+
+function mostrarResetSenha(){
+  const f = document.getElementById('reset-form');
+  if(f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  const emailEl = document.getElementById('login-email');
+  const resetEl = document.getElementById('reset-email');
+  if(emailEl && resetEl && emailEl.value) resetEl.value = emailEl.value;
+}
+
+async function enviarResetSenha(){
+  const email  = document.getElementById('reset-email')?.value.trim();
+  const msgEl  = document.getElementById('reset-msg');
+  if(!email){ msgEl.textContent='Informe o e-mail.'; msgEl.style.color='var(--red)'; msgEl.style.display='block'; return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if(error){ msgEl.textContent='Erro: '+error.message; msgEl.style.color='var(--red)'; }
+  else      { msgEl.textContent='✅ Link enviado! Verifique seu e-mail.'; msgEl.style.color='var(--green)'; }
+  msgEl.style.display = 'block';
+}
+
+async function salvarNovaSenha(){
+  const senha  = document.getElementById('nova-senha')?.value;
+  const msgEl  = document.getElementById('nova-senha-msg');
+  if(!senha || senha.length < 6){ msgEl.textContent='Senha deve ter ao menos 6 caracteres.'; msgEl.style.color='var(--red)'; msgEl.style.display='block'; return; }
+  const { error } = await sb.auth.updateUser({ password: senha });
+  if(error){ msgEl.textContent='Erro: '+error.message; msgEl.style.color='var(--red)'; }
+  else {
+    msgEl.textContent='✅ Senha atualizada! Fazendo login...'; msgEl.style.color='var(--green)';
+    msgEl.style.display='block';
+    setTimeout(()=>{ window.location.hash=''; window.location.reload(); }, 1500);
+  }
 }
 
 async function doLogout(){
@@ -2318,6 +2372,14 @@ function copiar(id){
 // INIT
 // ══════════════════════════════════════════
 sb.auth.onAuthStateChange(async (event, session) => {
+  if(event === 'PASSWORD_RECOVERY'){
+    // Usuário voltou do link de reset — mostra formulário de nova senha
+    document.getElementById('page-login').style.display = 'flex';
+    document.getElementById('main-nav').style.display   = 'none';
+    document.getElementById('nova-senha-form').style.display = 'block';
+    document.getElementById('reset-form').style.display      = 'none';
+    return;
+  }
   if(session?.user) await initSession(session.user);
 });
 
