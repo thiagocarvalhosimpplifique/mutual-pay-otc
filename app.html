@@ -489,28 +489,24 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
     <div>
       <h1 id="indicador-greeting">Olá</h1>
-      <p class="sub" style="margin-bottom:0">Painel de indicações — comissão por cliente</p>
+      <p class="sub" style="margin-bottom:0">Seus clientes e indicações OTC</p>
     </div>
+    <button class="btn btn-primary" onclick="openIndicadorClient()">+ Cadastrar cliente</button>
   </div>
 
   <!-- Stats -->
   <div class="p-stats">
     <div class="p-stat">
-      <div class="p-stat-label">Operações indicadas</div>
-      <div class="p-stat-value" id="ind-total">—</div>
-    </div>
-    <div class="p-stat">
-      <div class="p-stat-label">Volume total</div>
-      <div class="p-stat-value" id="ind-volume" style="font-size:17px">—</div>
-      <div class="p-stat-sub" id="ind-moeda"></div>
-    </div>
-    <div class="p-stat" style="border-color:rgba(16,185,129,.25)">
-      <div class="p-stat-label" style="color:var(--green)">Concluídas</div>
-      <div class="p-stat-value" id="ind-concluidas" style="color:var(--green)">—</div>
+      <div class="p-stat-label">Clientes cadastrados</div>
+      <div class="p-stat-value" id="ind-clientes">—</div>
     </div>
     <div class="p-stat" style="border-color:rgba(245,158,11,.3)">
-      <div class="p-stat-label" style="color:var(--gold)">Em andamento</div>
+      <div class="p-stat-label" style="color:var(--gold)">Ops em andamento</div>
       <div class="p-stat-value" id="ind-andamento" style="color:var(--gold)">—</div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(16,185,129,.25)">
+      <div class="p-stat-label" style="color:var(--green)">Ops concluídas</div>
+      <div class="p-stat-value" id="ind-concluidas" style="color:var(--green)">—</div>
     </div>
     <div class="p-stat" style="border-color:rgba(16,185,129,.2)">
       <div class="p-stat-label" style="color:var(--green)">Comissão estimada</div>
@@ -519,20 +515,39 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
     </div>
   </div>
 
-  <!-- Tabela de indicações -->
-  <div class="card">
+  <!-- Clientes cadastrados -->
+  <div class="card" style="margin-bottom:16px">
     <div class="card-header">
-      <div class="card-title">Minhas indicações</div>
-      <button class="btn btn-ghost btn-sm" onclick="loadIndicadorDashboard()">↺ Atualizar</button>
+      <div class="card-title">👤 Meus clientes</div>
+      <button class="btn btn-ghost btn-sm" onclick="loadIndicadorDashboard()">↺</button>
     </div>
     <div class="card-body" style="padding:14px">
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>ID Op.</th><th>Remetente → Beneficiário</th><th>Valor</th><th>Status</th><th>Comissão est.</th><th>Data</th></tr>
+            <tr><th>Nome / Razão social</th><th>CPF / CNPJ</th><th>Localização</th><th>Cadastro</th></tr>
+          </thead>
+          <tbody id="ind-clients-body">
+            <tr><td colspan="4"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Carregando...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operações dos clientes (read-only, sem dados financeiros) -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Operações dos meus clientes</div>
+    </div>
+    <div class="card-body" style="padding:14px">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID Op.</th><th>Cliente</th><th>Operação</th><th>Status</th><th>Atualizado</th></tr>
           </thead>
           <tbody id="indicador-ops-body">
-            <tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Carregando...</div></div></td></tr>
+            <tr><td colspan="5"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Carregando...</div></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -737,6 +752,64 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
       <div class="field" style="margin-top:10px"><label>Observação para o parceiro</label><textarea id="set-obs" placeholder="Ex: Identificar a TED/PIX com o número da operação OTC-XXXX" style="min-height:60px"></textarea></div>
       <hr class="div"/>
       <button class="btn btn-green btn-full btn-lg" onclick="saveContaRecebimento()">💾 Salvar conta de recebimento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: CADASTRO DE CLIENTE (indicador) ═══════════════ -->
+<div class="modal-backdrop" id="modal-ind-client">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">+ Cadastrar cliente</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Dados de identificação — a mesa OTC fará o KYC/KYB completo</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-ind-client')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid c1">
+        <div class="field">
+          <label>Nome completo / Razão social *</label>
+          <input type="text" id="ic-nome" placeholder="Ex: João Silva ou Empresa XYZ Ltda"/>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Tipo de documento</label>
+          <select id="ic-tipo-doc">
+            <option value="CPF">CPF (Pessoa Física)</option>
+            <option value="CNPJ">CNPJ (Pessoa Jurídica)</option>
+            <option value="Passaporte">Passaporte</option>
+            <option value="Tax ID">Tax ID</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Número do documento *</label>
+          <input type="text" id="ic-doc" placeholder="000.000.000-00 ou 00.000.000/0001-00"/>
+        </div>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="ic-email" placeholder="cliente@email.com"/>
+        </div>
+        <div class="field">
+          <label>WhatsApp</label>
+          <input type="text" id="ic-whatsapp" placeholder="5511999999999"/>
+        </div>
+        <div class="field">
+          <label>Cidade / Estado</label>
+          <input type="text" id="ic-cidade" placeholder="Curitiba, PR"/>
+        </div>
+        <div class="field">
+          <label>País</label>
+          <input type="text" id="ic-pais" placeholder="Brasil" value="Brasil"/>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Observação / contexto da indicação</label>
+        <textarea id="ic-obs" placeholder="Ex: Empresa exportadora, opera mensalmente aprox. USD 50k" style="min-height:60px"></textarea>
+      </div>
+      <hr class="div"/>
+      <button class="btn btn-green btn-full btn-lg" onclick="submitIndicadorClient()">💾 Cadastrar cliente</button>
     </div>
   </div>
 </div>
@@ -2632,57 +2705,133 @@ async function saveContaRecebimento(){
 // INDICADOR DASHBOARD
 // ══════════════════════════════════════════
 async function loadIndicadorDashboard(){
-  const { data: ops, error } = await sb.from('operations')
-    .select('*')
-    .eq('indicador_id', currentUser.id)
+  // 1. Busca clientes cadastrados pelo indicador
+  const { data: clients } = await sb.from('clients')
+    .select('id,nome,num_doc,doc_registro,tipo_doc,end_completo,pais,created_at')
+    .eq('partner_id', currentUser.id)
     .order('created_at', { ascending: false });
-  if(error){ toast('Erro: ' + error.message, 'err'); return; }
-  renderIndicadorDashboard(ops || []);
-}
 
-function renderIndicadorDashboard(ops){
-  const total      = ops.length;
-  const concluidas = ops.filter(o => o.status === 'Concluída');
-  const andamento  = ops.filter(o => !['Concluída','Bloqueada/recusada'].includes(o.status)).length;
-  const volTotal   = ops.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
-  const moeda      = ops[0]?.moeda_origem || 'USD';
+  const myClients = clients || [];
+  const clientIds = myClients.map(c => c.id);
 
-  // Comissão = comissao_pct% sobre o valor BRL das ops concluídas
+  // 2. Busca operações vinculadas a esses clientes (via indicador_id) OU com indicador_id direto
+  let ops = [];
+  if(clientIds.length > 0){
+    const { data: opsData } = await sb.from('operations')
+      .select('id,op_id,status,tipo,moeda_origem,moeda_destino,remetente,beneficiario,remetente_id,beneficiario_id,created_at,updated_at,valor_destino_final,indicador_id')
+      .or(`indicador_id.eq.${currentUser.id},remetente_id.in.(${clientIds.join(',')}),beneficiario_id.in.(${clientIds.join(',')})`)
+      .order('created_at', { ascending: false });
+    ops = opsData || [];
+  } else {
+    // Fallback: ops vinculadas diretamente por indicador_id
+    const { data: opsData } = await sb.from('operations')
+      .select('id,op_id,status,tipo,moeda_origem,moeda_destino,remetente,beneficiario,remetente_id,beneficiario_id,created_at,updated_at,valor_destino_final,indicador_id')
+      .eq('indicador_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    ops = opsData || [];
+  }
+
+  // 3. Stats
+  const concluidas  = ops.filter(o => o.status === 'Concluída');
+  const andamento   = ops.filter(o => !['Concluída','Bloqueada/recusada'].includes(o.status)).length;
   const comissaoPct = parseFloat(currentProfile?.comissao_pct) || 0;
   const baseBRL     = concluidas.reduce((s, o) => s + (parseFloat(o.valor_destino_final) || 0), 0);
   const comissaoEst = baseBRL * comissaoPct / 100;
 
   const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
-  set('ind-total',      total      || '0');
-  set('ind-volume',     fv(volTotal));
-  set('ind-moeda',      moeda);
-  set('ind-concluidas', concluidas.length || '0');
-  set('ind-andamento',  andamento  || '0');
+  set('ind-clientes',   myClients.length || '0');
+  set('ind-andamento',  andamento        || '0');
+  set('ind-concluidas', concluidas.length|| '0');
   set('ind-comissao',   comissaoEst > 0 ? 'R$ ' + fv(comissaoEst) : '—');
   set('ind-comissao-sub', comissaoPct > 0
-    ? `${comissaoPct}% s/ R$ ${fv(baseBRL)} concluído`
-    : 'Taxa não configurada — fale com a mesa');
+    ? `${comissaoPct}% sobre R$ ${fv(baseBRL)} concluído`
+    : 'Fale com a mesa para definir comissão');
 
-  const tbody = document.getElementById('indicador-ops-body');
-  if(!tbody) return;
-  if(!ops.length){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma indicação registrada ainda. A mesa OTC vinculará as ops aqui.</div></div></td></tr>`;
-    return;
+  // 4. Renderiza tabela de clientes
+  const clientBody = document.getElementById('ind-clients-body');
+  if(clientBody){
+    if(!myClients.length){
+      clientBody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👤</div><div class="empty-text">Nenhum cliente cadastrado ainda. Clique em "+ Cadastrar cliente".</div></div></td></tr>`;
+    } else {
+      clientBody.innerHTML = myClients.map(c => `
+        <tr>
+          <td style="font-weight:600">${c.nome||'—'}</td>
+          <td style="font-family:monospace;font-size:12px">${c.num_doc||c.doc_registro||'—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${c.end_completo||c.pais||'—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${fd(c.created_at)}</td>
+        </tr>`).join('');
+    }
   }
-  tbody.innerHTML = ops.map(o => {
-    const vlBRL   = parseFloat(o.valor_destino_final) || 0;
-    const comOp   = o.status === 'Concluída' && vlBRL
-      ? `<span style="color:var(--green);font-weight:600">R$ ${fv(vlBRL * comissaoPct / 100)}</span>`
-      : `<span style="color:var(--muted)">—</span>`;
-    return `<tr onclick="openOpDetail('${o.id}')">
-      <td class="td-id">${o.op_id}</td>
-      <td>${o.remetente||'—'} → ${o.beneficiario||'—'}</td>
-      <td class="td-valor">${fv(o.valor)} ${o.moeda_origem||''}</td>
-      <td>${statusDot(o.status)}</td>
-      <td>${comOp}</td>
-      <td style="font-size:12px;color:var(--muted)">${fd(o.created_at)}</td>
-    </tr>`;
-  }).join('');
+
+  // 5. Renderiza tabela de operações (sem dados financeiros)
+  const opsBody = document.getElementById('indicador-ops-body');
+  if(opsBody){
+    if(!ops.length){
+      opsBody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Ainda sem operações. Elas aparecerão aqui quando a mesa OTC as processar.</div></div></td></tr>`;
+    } else {
+      // Monta mapa clientId → nome para enriquecer a tabela
+      const clientMap = {};
+      myClients.forEach(c => { clientMap[c.id] = c.nome; });
+
+      opsBody.innerHTML = ops.map(o => {
+        // Descobre o nome do cliente desta op
+        const clienteNome = clientMap[o.remetente_id] || clientMap[o.beneficiario_id] || o.remetente || '—';
+        const tipoLabel   = o.tipo || `${o.moeda_origem||'?'} → ${o.moeda_destino||'?'}`;
+        return `<tr>
+          <td class="td-id">${o.op_id}</td>
+          <td style="font-weight:600">${clienteNome}</td>
+          <td style="font-size:12px;color:var(--muted)">${tipoLabel}</td>
+          <td>${statusDot(o.status)}</td>
+          <td style="font-size:12px;color:var(--muted)">${fdh(o.updated_at||o.created_at)}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+}
+
+// Abre modal de cadastro de cliente (indicador)
+function openIndicadorClient(){
+  ['ic-nome','ic-doc','ic-email','ic-whatsapp','ic-cidade','ic-obs'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  const pais = document.getElementById('ic-pais'); if(pais) pais.value = 'Brasil';
+  openModal('modal-ind-client');
+}
+
+async function submitIndicadorClient(){
+  const nome    = document.getElementById('ic-nome')?.value.trim();
+  const tipoDoc = document.getElementById('ic-tipo-doc')?.value || 'CPF';
+  const doc     = document.getElementById('ic-doc')?.value.trim();
+  const email   = document.getElementById('ic-email')?.value.trim();
+  const wpp     = document.getElementById('ic-whatsapp')?.value.trim().replace(/\D/g,'');
+  const cidade  = document.getElementById('ic-cidade')?.value.trim();
+  const pais    = document.getElementById('ic-pais')?.value.trim() || 'Brasil';
+  const obs     = document.getElementById('ic-obs')?.value.trim();
+
+  if(!nome || !doc){ toast('Nome e documento são obrigatórios.','warn'); return; }
+
+  // Monta endCompleto a partir de cidade + email + wpp
+  const extraParts = [cidade, email ? 'E-mail: '+email : '', wpp ? 'WA: '+wpp : ''].filter(Boolean).join(' | ');
+  const endCompleto = extraParts || cidade || '';
+
+  const tipo = ['CNPJ'].includes(tipoDoc) ? 'beneficiario' : 'remetente';
+
+  const { error } = await sb.from('clients').insert({
+    partner_id:   currentUser.id,
+    tipo,
+    nome,
+    tipo_doc:     tipoDoc,
+    num_doc:      doc,
+    pais,
+    end_completo: endCompleto,
+    docs:         obs || null,
+  });
+
+  if(error){ toast('Erro ao cadastrar: ' + error.message,'err'); return; }
+
+  toast(`✅ Cliente "${nome}" cadastrado!`);
+  closeModal('modal-ind-client');
+  await loadIndicadorDashboard();
 }
 
 // ══════════════════════════════════════════
