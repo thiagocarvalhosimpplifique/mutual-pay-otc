@@ -24,6 +24,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px
 .nav-role{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 8px;border-radius:4px}
 .role-trader{background:rgba(139,92,246,.2);color:var(--purple)}
 .role-partner{background:rgba(16,185,129,.15);color:var(--green)}
+.role-indicador{background:rgba(245,158,11,.18);color:var(--gold)}
 
 /* LAYOUT */
 .page{display:none;max-width:1180px;margin:0 auto;padding:28px 20px 80px}
@@ -483,6 +484,62 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
   </div>
 </div>
 
+<!-- ═══════════════ INDICADOR DASHBOARD ═══════════════ -->
+<div class="page" id="page-indicador">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div>
+      <h1 id="indicador-greeting">Olá</h1>
+      <p class="sub" style="margin-bottom:0">Painel de indicações — comissão por cliente</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="p-stats">
+    <div class="p-stat">
+      <div class="p-stat-label">Operações indicadas</div>
+      <div class="p-stat-value" id="ind-total">—</div>
+    </div>
+    <div class="p-stat">
+      <div class="p-stat-label">Volume total</div>
+      <div class="p-stat-value" id="ind-volume" style="font-size:17px">—</div>
+      <div class="p-stat-sub" id="ind-moeda"></div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(16,185,129,.25)">
+      <div class="p-stat-label" style="color:var(--green)">Concluídas</div>
+      <div class="p-stat-value" id="ind-concluidas" style="color:var(--green)">—</div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(245,158,11,.3)">
+      <div class="p-stat-label" style="color:var(--gold)">Em andamento</div>
+      <div class="p-stat-value" id="ind-andamento" style="color:var(--gold)">—</div>
+    </div>
+    <div class="p-stat" style="border-color:rgba(16,185,129,.2)">
+      <div class="p-stat-label" style="color:var(--green)">Comissão estimada</div>
+      <div class="p-stat-value" id="ind-comissao" style="font-size:16px;color:var(--green)">—</div>
+      <div class="p-stat-sub" id="ind-comissao-sub">sobre ops concluídas</div>
+    </div>
+  </div>
+
+  <!-- Tabela de indicações -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Minhas indicações</div>
+      <button class="btn btn-ghost btn-sm" onclick="loadIndicadorDashboard()">↺ Atualizar</button>
+    </div>
+    <div class="card-body" style="padding:14px">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID Op.</th><th>Remetente → Beneficiário</th><th>Valor</th><th>Status</th><th>Comissão est.</th><th>Data</th></tr>
+          </thead>
+          <tbody id="indicador-ops-body">
+            <tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Carregando...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: DETALHES DA OPERAÇÃO ═══════════════ -->
 <div class="modal-backdrop" id="modal-op">
   <div class="modal">
@@ -594,15 +651,33 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
     </div>
     <div class="modal-body">
       <div class="alert alert-blue">O parceiro receberá o acesso por e-mail e poderá criar uma senha.</div>
+      <!-- Tipo de parceiro -->
+      <div class="field" style="margin-bottom:14px">
+        <label>Tipo de parceiro *</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;flex:1;min-width:180px" id="cp-type-op-lbl">
+            <input type="radio" name="cp-role" id="cp-role-operacional" value="partner" checked onchange="toggleCpType()"/>
+            <div><div style="font-weight:700">Operacional</div><div style="font-size:11px;color:var(--muted)">Emite cotações, gerencia operações</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;flex:1;min-width:180px" id="cp-type-ind-lbl">
+            <input type="radio" name="cp-role" id="cp-role-indicador" value="indicador" onchange="toggleCpType()"/>
+            <div><div style="font-weight:700">Indicador</div><div style="font-size:11px;color:var(--muted)">Indica clientes, ganha comissão</div></div>
+          </label>
+        </div>
+      </div>
       <div class="form-grid c1">
-        <div class="field"><label>Nome do parceiro *</label><input type="text" id="cp-name" placeholder="João Silva"/></div>
+        <div class="field"><label>Nome *</label><input type="text" id="cp-name" placeholder="João Silva"/></div>
         <div class="field"><label>Empresa</label><input type="text" id="cp-company" placeholder="Parceiro FX Ltda"/></div>
         <div class="field"><label>WhatsApp (DDI+DDD+número)</label><input type="text" id="cp-whatsapp" placeholder="5511999999999"/></div>
         <div class="field"><label>E-mail *</label><input type="email" id="cp-email" placeholder="parceiro@email.com"/></div>
         <div class="field"><label>Senha temporária *</label><input type="text" id="cp-pass" placeholder="Mínimo 6 caracteres"/></div>
+        <div class="field" id="cp-comissao-wrap" style="display:none">
+          <label>Comissão % (sobre BRL das ops concluídas)</label>
+          <input type="number" id="cp-comissao" placeholder="Ex: 0.5" step="0.01" min="0" max="100"/>
+        </div>
       </div>
       <hr class="div"/>
-      <button class="btn btn-purple btn-full btn-lg" onclick="createPartner()">Criar parceiro</button>
+      <button class="btn btn-purple btn-full btn-lg" onclick="createPartner()" id="cp-submit-btn">Criar parceiro operacional</button>
     </div>
   </div>
 </div>
@@ -926,7 +1001,6 @@ async function initSession(user){
   if(profile?.role === 'trader'){
     document.getElementById('nav-role').textContent = 'Trader';
     document.getElementById('nav-role').className = 'nav-role role-trader';
-    // Mostra botões do trader (configurações + troca de visão)
     const btnSet = document.getElementById('btn-settings');
     if(btnSet) btnSet.style.display = 'inline-flex';
     const btnSwitch = document.getElementById('btn-switch-view');
@@ -942,6 +1016,12 @@ async function initSession(user){
     });
     await loadTraderDashboard();
     showPage('page-trader');
+  } else if(profile?.role === 'indicador'){
+    document.getElementById('nav-role').textContent = 'Indicador';
+    document.getElementById('nav-role').className = 'nav-role role-indicador';
+    document.getElementById('indicador-greeting').textContent = `Olá, ${profile?.name || user.email.split('@')[0]}`;
+    await loadIndicadorDashboard();
+    showPage('page-indicador');
   } else {
     document.getElementById('nav-role').textContent = 'Parceiro';
     document.getElementById('nav-role').className = 'nav-role role-partner';
@@ -1088,8 +1168,22 @@ async function openOpDetail(id, jumpToQuote){
     : buildPartnerOpHTML(op);
 
   openModal('modal-op');
+
   // Carrega destinatários em background
   setTimeout(()=>loadDestinatarios(op.id), 150);
+
+  // Carrega indicadores no select (apenas para trader)
+  if(currentProfile?.role === 'trader'){
+    sb.from('profiles').select('id,name,company,comissao_pct').eq('role','indicador').then(({data}) => {
+      const sel = document.getElementById('to-indicador');
+      if(!sel || !data) return;
+      const cur = op.indicador_id || '';
+      sel.innerHTML = `<option value="">— Sem indicador —</option>` +
+        (data||[]).map(p =>
+          `<option value="${p.id}" ${p.id===cur?'selected':''}>${p.name||p.company||'—'}${p.comissao_pct?' ('+p.comissao_pct+'%)':''}</option>`
+        ).join('');
+    });
+  }
 
   if(isTrader && jumpToQuote){
     setTimeout(()=>showModalTab('mt-cotacao'), 50);
@@ -1187,6 +1281,16 @@ function buildTraderOpHTML(op, jumpToQuote){
       <div class="field"><label>Invoice / Referência documental</label><textarea id="to-invoice" style="min-height:50px">${op.invoice||''}</textarea></div>
     </div>
     <button class="btn btn-primary btn-sm" onclick="saveTraderSection('${op.id}','op')">💾 Salvar operação</button>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <div class="field" style="flex:1;min-width:200px;margin-bottom:0">
+        <label>🤝 Indicador vinculado</label>
+        <select id="to-indicador" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-size:13px">
+          <option value="">— Sem indicador —</option>
+        </select>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="white-space:nowrap" onclick="saveTraderSection('${op.id}','indicador')">💾 Salvar</button>
+    </div>
 
     <div class="cl-section-title" style="margin-top:20px">✅ Checklist de validação</div>
     ${clProgress(cv, vKeys)}
@@ -1412,6 +1516,9 @@ async function saveTraderSection(opId, section){
       agencia:            document.getElementById('tb-agencia')?.value.trim(),
       pix_chave:          document.getElementById('tb-pix')?.value.trim()
     };
+  } else if(section === 'indicador'){
+    const val = document.getElementById('to-indicador')?.value;
+    payload = { ...payload, indicador_id: val || null };
   }
   const { error } = await sb.from('operations').update(payload).eq('id', opId);
   if(error){ toast('Erro ao salvar: '+error.message,'err'); return; }
@@ -1855,19 +1962,41 @@ async function submitNewOp(){
 // ══════════════════════════════════════════
 function openCreatePartner(){ openModal('modal-create-partner'); }
 
+function toggleCpType(){
+  const isInd = document.getElementById('cp-role-indicador')?.checked;
+  const wrap  = document.getElementById('cp-comissao-wrap');
+  const btn   = document.getElementById('cp-submit-btn');
+  if(wrap) wrap.style.display = isInd ? 'block' : 'none';
+  if(btn)  btn.textContent = isInd ? 'Criar indicador' : 'Criar parceiro operacional';
+}
+
 async function createPartner(){
-  const name    = document.getElementById('cp-name').value.trim();
-  const company = document.getElementById('cp-company').value.trim();
-  const whatsapp= document.getElementById('cp-whatsapp').value.trim().replace(/\D/g,'');
-  const email   = document.getElementById('cp-email').value.trim();
-  const pass    = document.getElementById('cp-pass').value;
+  const name      = document.getElementById('cp-name').value.trim();
+  const company   = document.getElementById('cp-company').value.trim();
+  const whatsapp  = document.getElementById('cp-whatsapp').value.trim().replace(/\D/g,'');
+  const email     = document.getElementById('cp-email').value.trim();
+  const pass      = document.getElementById('cp-pass').value;
+  const role      = document.querySelector('input[name="cp-role"]:checked')?.value || 'partner';
+  const comissao  = parseFloat(document.getElementById('cp-comissao').value) || 0;
+
   if(!name||!email||!pass){ toast('Preencha nome, e-mail e senha.','warn'); return; }
-  const { error } = await sb.auth.signUp({
+
+  const { data, error } = await sb.auth.signUp({
     email, password: pass,
-    options: { data: { name, company, whatsapp, role: 'partner' } }
+    options: { data: { name, company, whatsapp, role } }
   });
   if(error){ toast('Erro: '+error.message,'err'); return; }
-  toast(`Parceiro ${name} criado!`);
+
+  // Upsert no profiles para garantir role e comissão corretos
+  if(data?.user){
+    await sb.from('profiles').upsert({
+      id: data.user.id, name, company, whatsapp, role,
+      comissao_pct: role === 'indicador' ? comissao : 0,
+    });
+  }
+
+  const label = role === 'indicador' ? 'Indicador' : 'Parceiro';
+  toast(`${label} ${name} criado!`);
   closeModal('modal-create-partner');
 }
 
@@ -2387,7 +2516,8 @@ function setupRealtime(){
   if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
 
   const refreshDash = debounce(async () => {
-    if(currentProfile?.role === 'trader') await loadTraderDashboard();
+    if(currentProfile?.role === 'trader')    await loadTraderDashboard();
+    else if(currentProfile?.role === 'indicador') await loadIndicadorDashboard();
     else await loadPartnerDashboard();
     // se modal de op estiver aberto, recarrega destinatários
     const modal = document.getElementById('modal-op');
@@ -2409,6 +2539,13 @@ function setupRealtime(){
           debounce(() => loadNotifications(), 600))
       .on('postgres_changes', { event:'*', schema:'public', table:'destinatarios' },
           debounce(() => { if(currentOp) loadDestinatarios(currentOp.id); }, 400))
+      .subscribe(onStatus);
+  } else if(currentProfile?.role === 'indicador'){
+    realtimeChannel = sb.channel(`indicador-live-${currentUser?.id}`)
+      .on('postgres_changes', {
+        event:'*', schema:'public', table:'operations',
+        filter:`indicador_id=eq.${currentUser.id}`
+      }, refreshDash)
       .subscribe(onStatus);
   } else {
     realtimeChannel = sb.channel(`partner-live-${currentUser?.id}`)
@@ -2489,6 +2626,63 @@ async function saveContaRecebimento(){
   closeModal('modal-settings');
   // Recarrega o card do parceiro se estiver visível
   await loadContaRecebimento();
+}
+
+// ══════════════════════════════════════════
+// INDICADOR DASHBOARD
+// ══════════════════════════════════════════
+async function loadIndicadorDashboard(){
+  const { data: ops, error } = await sb.from('operations')
+    .select('*')
+    .eq('indicador_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  if(error){ toast('Erro: ' + error.message, 'err'); return; }
+  renderIndicadorDashboard(ops || []);
+}
+
+function renderIndicadorDashboard(ops){
+  const total      = ops.length;
+  const concluidas = ops.filter(o => o.status === 'Concluída');
+  const andamento  = ops.filter(o => !['Concluída','Bloqueada/recusada'].includes(o.status)).length;
+  const volTotal   = ops.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
+  const moeda      = ops[0]?.moeda_origem || 'USD';
+
+  // Comissão = comissao_pct% sobre o valor BRL das ops concluídas
+  const comissaoPct = parseFloat(currentProfile?.comissao_pct) || 0;
+  const baseBRL     = concluidas.reduce((s, o) => s + (parseFloat(o.valor_destino_final) || 0), 0);
+  const comissaoEst = baseBRL * comissaoPct / 100;
+
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('ind-total',      total      || '0');
+  set('ind-volume',     fv(volTotal));
+  set('ind-moeda',      moeda);
+  set('ind-concluidas', concluidas.length || '0');
+  set('ind-andamento',  andamento  || '0');
+  set('ind-comissao',   comissaoEst > 0 ? 'R$ ' + fv(comissaoEst) : '—');
+  set('ind-comissao-sub', comissaoPct > 0
+    ? `${comissaoPct}% s/ R$ ${fv(baseBRL)} concluído`
+    : 'Taxa não configurada — fale com a mesa');
+
+  const tbody = document.getElementById('indicador-ops-body');
+  if(!tbody) return;
+  if(!ops.length){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma indicação registrada ainda. A mesa OTC vinculará as ops aqui.</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = ops.map(o => {
+    const vlBRL   = parseFloat(o.valor_destino_final) || 0;
+    const comOp   = o.status === 'Concluída' && vlBRL
+      ? `<span style="color:var(--green);font-weight:600">R$ ${fv(vlBRL * comissaoPct / 100)}</span>`
+      : `<span style="color:var(--muted)">—</span>`;
+    return `<tr onclick="openOpDetail('${o.id}')">
+      <td class="td-id">${o.op_id}</td>
+      <td>${o.remetente||'—'} → ${o.beneficiario||'—'}</td>
+      <td class="td-valor">${fv(o.valor)} ${o.moeda_origem||''}</td>
+      <td>${statusDot(o.status)}</td>
+      <td>${comOp}</td>
+      <td style="font-size:12px;color:var(--muted)">${fd(o.created_at)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════
